@@ -57,7 +57,7 @@ def head(slug):
 <link rel="preload" href="{b}assets/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="{b}assets/fonts/bodonimoda.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{b}assets/site.css">
-<script>document.documentElement.classList.add('js')</script>
+<script>(function(d){{d.classList.add('js');if(matchMedia('(prefers-reduced-motion: no-preference)').matches&&window.CSS&&CSS.supports('overflow','clip'))d.classList.add('has-run')}})(document.documentElement)</script>
 <script src="{b}assets/site.js" defer></script>
 </head>"""
 
@@ -148,10 +148,23 @@ def build_home():
     # hero
     finish_btns = "".join(
         f'<button type="button" data-finish="{k}" aria-pressed="{"true" if k == "foil" else "false"}">{esc(label)}</button>' for k, label in FINISHES)
-    hero = f"""<section class="hero" data-hero aria-labelledby="hero-t">
+    # the ring of techniques the leather piece lands among (first eight, list order, clockwise)
+    techs = [w for w in c.works("creation-d-objet-unique") if c.work_lines(w)]
+    tiles = []
+    for i, w in enumerate(techs[:8]):
+        title = c.work_lines(w)[0]
+        low = title.lower()
+        match = " ".join(k for k, needle in (("gravure", "gravure"), ("leaf", "feuille d"), ("foil", "dorure à chaud"), ("emboss", "embossage")) if needle in low)
+        tiles.append(f'<a class="atlas__t" href="#geste-{i}" data-g="{i}"{f" data-match={chr(34)}{match}{chr(34)}" if match else ""}>'
+                     f'{A.picture(w["media"], b, "(max-width: 767px) 60vw, 46vw", alt="")}<span class="atlas__l">{esc(title)}</span></a>')
+    hero = f"""<div class="run" data-run>
+<section class="hero" data-hero aria-labelledby="hero-t">
   <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute"><filter id="torn" x="-4%" y="-4%" width="108%" height="108%"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
+  <div class="piece__shadow" aria-hidden="true" data-shadow></div>
+  <div class="piece" data-piece><div class="piece__in" data-piece-in>
   <div class="hero__leather" aria-hidden="true"></div>
   <div class="hero__light" aria-hidden="true" data-light></div>
+  <svg class="piece__stitch" aria-hidden="true" focusable="false" data-stitch><defs><mask id="sew" maskUnits="userSpaceOnUse" x="-50%" y="-50%" width="200%" height="200%"><path class="sew"/><path class="sew"/></mask></defs><path class="rim"/><g mask="url(#sew)"><path class="stitch stitch--shade"/><path class="stitch"/></g></svg>
   <div class="hero__stage">
     <div class="mono is-ghost" data-mono data-finish="foil">
       <span class="mono__l mono__shadow" aria-hidden="true"></span>
@@ -159,26 +172,28 @@ def build_home():
       <span class="mono__l mono__face" aria-hidden="true"></span>
       <input class="mono__input" id="initiales" name="initiales" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="initiales-aide">
     </div>
-    <label class="mono__field" for="initiales"><span class="mono__label">Écrivez vos initiales</span><span class="mono__rule" aria-hidden="true"></span><span class="sr-only" id="initiales-aide">Trois lettres au plus. Le monogramme se met à jour pendant la saisie.</span></label>
-    <div class="finish" role="group" aria-label="Finition du monogramme">{finish_btns}</div>
+    <label class="mono__field" for="initiales" data-fade><span class="mono__label">Écrivez vos initiales</span><span class="mono__rule" aria-hidden="true"></span><span class="sr-only" id="initiales-aide">Trois lettres au plus. Le monogramme se met à jour pendant la saisie.</span></label>
+    <div class="finish" role="group" aria-label="Finition du monogramme" data-fade>{finish_btns}</div>
   </div>
-  <div class="hero__foot">
+  <div class="hero__foot" data-fade>
     <div class="hero__copy" data-settle>
       <h1 id="hero-t">Ateliers de personnalisation sur-mesure</h1>
       <p>{esc(h['agence'][0])}</p>
     </div>
     <a class="link" href="contact-feedback/" data-settle>Nous contacter <span aria-hidden="true">&rarr;</span></a>
   </div>
-</section>"""
+  </div></div>
+  <nav class="atlas" aria-label="{esc(LABEL['creation-d-objet-unique'])}" data-atlas>{''.join(tiles)}</nav>
+</section>
+</div>"""
 
     # gestes: the signature techniques, from « Nos ateliers signatures »
-    techs = [w for w in c.works("creation-d-objet-unique") if c.work_lines(w)]
     media, items = [], []
     for i, w in enumerate(techs):
         alt = c.work_alt(w)
         on = ' class="is-on"' if i == 0 else ""
         media.append(f'<figure data-g="{i}"{on}>{A.picture(w["media"], b, "50vw", alt="")}</figure>')
-        items.append(f"""<li class="geste{' is-on' if i == 0 else ''}" data-g="{i}">
+        items.append(f"""<li class="geste{' is-on' if i == 0 else ''}" id="geste-{i}" tabindex="-1" data-g="{i}">
         <div class="geste__img">{A.picture(w['media'], b, '92vw', alt=alt)}</div>
         <h3>{esc(c.work_lines(w)[0])}</h3>
         <p>{esc(c.work_desc(w))}</p>

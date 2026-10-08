@@ -54,3 +54,4 @@ Nothing was taken from V1 or invented.
 - Pages keep the live slugs; canonical tags point to www.cobaltcreation.com; every page is
   `noindex, nofollow` and robots.txt disallows everything until launch.
 - Light/dark: V2 is locked light and V3 locked dark, by brand choice rather than system setting.
+- V3 hero transition (2026-10-08): scroll-linked, transforms and opacity only (the piece is trimmed by scaling its frame unevenly and its content back evenly, so nothing repaints). The pinned layout is chosen in the head so the first paint is final (no layout shift). With reduced motion, or without JS or `overflow: clip`, the hero stays static and the leather fades into the ink instead.

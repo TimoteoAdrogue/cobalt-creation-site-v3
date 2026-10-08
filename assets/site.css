@@ -100,7 +100,12 @@ button { font: inherit; color: inherit; }
 }
 
 /* ---------- HERO: the live monogram ---------- */
-.hero { position: relative; min-height: 100dvh; display: grid; grid-template-rows: 1fr auto; overflow: hidden; isolation: isolate; background: var(--ground); }
+.hero { position: relative; overflow: hidden; isolation: isolate; background: var(--ground); }
+.piece { position: relative; overflow: hidden; isolation: isolate; }
+.piece__in { position: relative; min-height: 100vh; min-height: 100dvh; display: grid; grid-template-rows: 1fr auto; isolation: isolate; }
+/* without the run (no JS, reduced motion) the leather still dissolves into the ink instead of stopping on a line */
+.piece__in::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; z-index: -1; height: 26vh; pointer-events: none; background: linear-gradient(rgba(2, 55, 79, 0), var(--ground)); }
+.has-run .piece__in::after { display: none; }
 .hero__leather {
   position: absolute; inset: 0; z-index: -2;
   background-color: var(--ground);
@@ -187,6 +192,49 @@ button { font: inherit; color: inherit; }
 .hero__copy { max-width: 520px; }
 .hero__copy h1 { font-size: clamp(22px, 2vw, 30px); line-height: 1.2; margin-bottom: 12px; }
 .hero__copy p { font-size: 15px; color: var(--soft); margin: 0; }
+
+/* ---------- the run: the leather turns out to be a piece, and the camera pulls back onto the atelier table ----------
+   Only with JS and full motion (html.has-run). The hero pins while the piece shrinks and is trimmed to its shape,
+   its seam is sewn, and the eight signature techniques come in around it. Every frame is a transform or an opacity:
+   the piece is cropped by scaling its frame unevenly and its content back evenly, so nothing is repainted. */
+.atlas, .piece__shadow, .piece__stitch { display: none; }
+.has-run .run { position: relative; height: calc(100vh + 140vh); height: calc(100lvh + 140svh); margin-bottom: var(--bleed, 0px); }
+.has-run .hero { position: sticky; top: 0; height: 100vh; height: 100lvh; overflow: visible; overflow-x: clip; }
+.has-run .piece, .has-run .piece__shadow { position: absolute; left: 0; top: 0; width: 100%; height: 100vh; height: 100svh; transform-origin: 50% 50%; will-change: transform; }
+.has-run .piece__in { position: absolute; inset: 0; min-height: 0; transform-origin: 50% 50%; will-change: transform; }
+.has-run .hero__leather { inset: -40% 0; }
+.has-run .piece__shadow { display: block; opacity: 0; background: var(--deeper); box-shadow: 0 calc(26px / var(--s, .4)) calc(62px / var(--s, .4)) rgba(0, 6, 12, .62), 0 calc(5px / var(--s, .4)) calc(12px / var(--s, .4)) rgba(0, 6, 12, .35); }
+.has-run .piece__stitch { display: block; position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; overflow: visible; will-change: transform; }
+.has-run .mono { will-change: transform; } /* the gold repaints as the light moves: keep that off the leather */
+.rim { fill: none; stroke: rgba(0, 9, 16, .7); }
+.stitch { fill: none; stroke: var(--gold); stroke-linecap: round; }
+.stitch--shade { stroke: rgba(0, 8, 14, .6); }
+.sew { fill: none; stroke: #fff; }
+.has-run [data-fade] { will-change: opacity, transform; }
+
+.has-run .atlas { display: block; position: absolute; left: 0; top: 0; width: 100%; height: 100vh; height: 100svh; pointer-events: none; }
+.atlas__t {
+  position: absolute; display: block; overflow: hidden; pointer-events: auto; opacity: 0; visibility: hidden;
+  background: var(--deep); color: var(--cream); text-decoration: none; transform-origin: 50% 50%; will-change: transform, opacity;
+  box-shadow: 0 18px 40px -18px rgba(0, 6, 12, .7);
+}
+.atlas__t img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.86) brightness(.82); transition: transform 1.2s var(--settle), filter .6s var(--settle); }
+/* the veil: a tile comes out of the shadow as it settles on the table */
+.atlas__t::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: var(--deeper); opacity: var(--veil, 1); will-change: opacity; }
+.atlas__t::after {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(to top, rgba(1, 28, 42, .84), rgba(1, 28, 42, 0) 50%);
+  box-shadow: inset 0 0 0 1px rgba(208, 171, 126, 0); transition: box-shadow .5s var(--settle);
+}
+.atlas__l {
+  position: absolute; left: 16px; right: 16px; bottom: 14px; z-index: 2; opacity: var(--lab, 0);
+  font: 500 11px/1.4 var(--sans); letter-spacing: .16em; text-transform: uppercase; transition: color .5s var(--settle); will-change: opacity;
+}
+.atlas__t:focus-visible { outline-offset: 4px; }
+.atlas__t:hover img, .atlas__t:focus-visible img { transform: scale(1.05); filter: none; }
+.atlas__t.is-match::after { box-shadow: inset 0 0 0 1px rgba(208, 171, 126, calc(.85 * var(--lab, 0))); }
+.atlas__t:hover::after, .atlas__t:focus-visible::after { box-shadow: inset 0 0 0 1px rgba(208, 171, 126, .85); }
+.atlas__t.is-match .atlas__l { color: var(--gold-hi); }
 
 /* ---------- section rhythm ---------- */
 .sec { padding-block: clamp(88px, 11vw, 168px); }
@@ -423,6 +471,8 @@ button { font: inherit; color: inherit; }
   .hero__foot { flex-direction: column; align-items: flex-start; }
   .hero__stage { padding-top: 112px; }
   .hero__leather { background-size: auto, 300px 300px; }
+  .has-run .run { height: calc(100vh + 120vh); height: calc(100lvh + 120svh); }
+  .atlas__l { left: 10px; right: 10px; bottom: 9px; font-size: 9.5px; letter-spacing: .13em; }
   .crew { grid-template-columns: 1fr 1fr; }
   .wall { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .reals__grid { columns: 2 140px; }

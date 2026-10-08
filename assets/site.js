@@ -42,10 +42,137 @@
     settle.forEach((el) => o.observe(el));
   } else settle.forEach((el) => el.classList.add("is-in"));
 
+  /* ---------- the run: the leather turns out to be a piece; the camera pulls back onto the atelier table ---------- */
+  const R = { p: 0 }; // progress through the run
+  const run = $("[data-run]");
+  // html.has-run is set in the head (motion allowed, overflow: clip supported), so the first paint is already the pinned layout
+  if (run && document.documentElement.classList.contains("has-run")) {
+    const hero = $("[data-hero]", run), piece = $("[data-piece]", run), inner = $("[data-piece-in]", run), shade = $("[data-shadow]", run);
+    const svg = $("[data-stitch]", run), atlas = $("[data-atlas]", run), stage = $(".hero__stage", run), monoEl = $("[data-mono]", run);
+    const tiles = $$(".atlas__t", run), fades = $$("[data-fade]", run);
+    const sews = $$(".sew", svg), threads = $$(".stitch", svg), rim = $(".rim", svg);
+    // grid offsets, clockwise from the top left, so the tab order walks round the piece
+    const RING = [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]];
+    const clamp = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+    const seg = (p, a, b) => clamp((p - a) / (b - a));
+    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const f4 = (v) => v.toFixed(4);
+    // s: the piece's final width over the screen's; aspect: its final height over the screen height at that scale;
+    // fy: how far the monogram sits from the centre, so the trimmed piece is centred on it
+    let s = 0.42, aspect = 1, fy = 0, D = 1, top0 = 0, ring = [], sewL = [], last = -1, raf = 0;
+    const par = { x: 0, y: 0, tx: 0, ty: 0 }; // the table answers the hand once it is laid out
+
+    const layout = () => {
+      const W = piece.offsetWidth, H = piece.offsetHeight;
+      const phone = W < 768;
+      s = phone ? 0.6 : W < 1100 ? 0.48 : 0.42;
+      const cw = W * s, ch = phone ? Math.min(cw * 1.28, H * 0.5) : H * s; // a 4:5 card on a phone, the screen's own shape elsewhere
+      aspect = ch / (H * s);
+      fy = stage.offsetTop + monoEl.offsetTop + monoEl.offsetHeight / 2 - H / 2;
+      const g = phone ? 12 : 26, fit = phone ? 0.9 : 0.84, rh = Math.min(ch, cw / 1.42), cx = W / 2, cy = H / 2;
+      ring = tiles.map((t, i) => {
+        const [c, r] = RING[i % RING.length];
+        const cellH = r === 0 ? ch : rh, x = cx + c * (cw + g), y = r === 0 ? cy : cy + r * (ch / 2 + g + rh / 2);
+        const w = cw * fit, h = cellH * fit;
+        Object.assign(t.style, { left: `${x - w / 2}px`, top: `${y - h / 2}px`, width: `${w}px`, height: `${h}px` });
+        return { dx: x - cx, dy: y - cy, d: Math.abs(c) + Math.abs(r), i };
+      });
+      // the lowest row hangs below the pinned screen: keep it off the next section
+      run.style.setProperty("--bleed", `${Math.max(0, Math.ceil(cy + ch / 2 + g + rh - hero.offsetHeight))}px`);
+      hero.style.setProperty("--s", s);
+      // the seam and the dyed edge, in the piece's own pixels around the trimmed shape (centred on the monogram),
+      // so they shrink with it; the seam sits about 12 px in from the edge once the piece is laid down
+      const hh = ch / s / 2, top = H / 2 + fy - hh, bot = H / 2 + fy + hh;
+      const n = 12 / s, rad = 8 / s, x0 = n, y0 = top + n, x1 = W - n, y1 = bot - n, mx = W / 2;
+      const X = (d) => (d > 0 ? x1 : x0), Xi = (d) => (d > 0 ? x1 - rad : x0 + rad);
+      const side = (d) => `M${mx} ${y0}H${Xi(d)}Q${X(d)} ${y0} ${X(d)} ${y0 + rad}V${y1 - rad}Q${X(d)} ${y1} ${Xi(d)} ${y1}H${mx}`;
+      const loop = `${side(1)}H${x0 + rad}Q${x0} ${y1} ${x0} ${y1 - rad}V${y0 + rad}Q${x0} ${y0} ${x0 + rad} ${y0}Z`;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      rim.setAttribute("d", `M0 ${top}H${W}V${bot}H0Z`);
+      rim.setAttribute("stroke-width", (3.2 / s).toFixed(2));
+      threads.forEach((t, k) => {
+        t.setAttribute("d", loop);
+        t.setAttribute("stroke-width", ((k ? 1.15 : 1.6) / s).toFixed(2));
+        t.setAttribute("stroke-dasharray", `${(4.2 / s).toFixed(2)} ${(3.4 / s).toFixed(2)}`);
+        if (!k) t.setAttribute("transform", `translate(0 ${(0.9 / s).toFixed(2)})`);
+      });
+      sewL = sews.map((m, k) => {
+        m.setAttribute("d", side(k ? -1 : 1));
+        m.setAttribute("stroke-width", (9 / s).toFixed(1));
+        const L = m.getTotalLength();
+        m.setAttribute("stroke-dasharray", `${L} ${L}`);
+        return L;
+      });
+      D = Math.max(1, run.offsetHeight - hero.offsetHeight);
+      top0 = run.getBoundingClientRect().top + scrollY;
+      last = -1;
+      update();
+    };
+
+    const update = () => {
+      raf = 0;
+      const p = clamp((scrollY - top0) / D);
+      par.x += (par.tx - par.x) * 0.08; par.y += (par.ty - par.y) * 0.08;
+      const moving = Math.abs(par.tx - par.x) + Math.abs(par.ty - par.y) > 0.05;
+      if (p === last && !moving) return;
+      last = p; R.p = p;
+      const e = ease(seg(p, 0.02, 0.76)), c = ease(seg(p, 0.02, 0.48));
+      const Z = Math.pow(1 / s, 1 - e); // the camera, from the leather filling the screen to the whole table, even in log-space
+      const k = s * Z;                   // the leather's scale on screen
+      const m = 1 + (aspect - 1) * c;    // how much of its height is kept: the piece is trimmed to its shape
+      const frame = `translate3d(${(par.x * 0.4).toFixed(2)}px,${(par.y * 0.4).toFixed(2)}px,0) scale(${f4(k)},${f4(k * m)})`;
+      piece.style.transform = frame; shade.style.transform = frame;
+      inner.style.transform = `scale(1,${f4(1 / m)}) translate3d(0,${(-fy * c).toFixed(2)}px,0)`;
+      shade.style.opacity = ease(seg(p, 0.04, 0.42)).toFixed(3);
+      rim.style.opacity = seg(p, 0.36, 0.5).toFixed(3);
+      const q = ease(seg(p, 0.36, 0.8));
+      sews.forEach((el, i) => el.setAttribute("stroke-dashoffset", (sewL[i] * (1 - q)).toFixed(1)));
+      const f = 1 - seg(p, 0, 0.09);
+      fades.forEach((el) => {
+        el.style.opacity = f.toFixed(3);
+        el.style.transform = f < 1 ? `translate3d(0,${((1 - f) * 14).toFixed(1)}px,0)` : "";
+        el.style.visibility = f === 0 ? "hidden" : "";
+      });
+      ring.forEach((r) => {
+        const t = tiles[r.i], o = seg(e, 0.06 + r.d * 0.04 + r.i * 0.01, 0.26 + r.d * 0.04 + r.i * 0.01);
+        const depth = 0.6 + r.d * 0.45;
+        t.style.opacity = o.toFixed(3);
+        t.style.visibility = o === 0 ? "hidden" : "visible";
+        t.style.setProperty("--veil", (0.9 * (1 - seg(e, 0.3 + r.d * 0.05, 0.92))).toFixed(3));
+        t.style.transform = `translate3d(${(r.dx * (Z - 1) + par.x * depth).toFixed(1)}px,${(r.dy * (Z - 1) + par.y * depth).toFixed(1)}px,0) scale(${f4(Z)})`;
+      });
+      atlas.style.setProperty("--lab", seg(p, 0.64, 0.84).toFixed(3));
+      if (moving) raf = requestAnimationFrame(update);
+    };
+    const kick = () => { if (!raf) raf = requestAnimationFrame(update); };
+    addEventListener("scroll", kick, { passive: true });
+    addEventListener("resize", layout, { passive: true });
+    if (fine) hero.addEventListener("pointermove", (e) => {
+      const w = seg(R.p, 0.6, 0.85);
+      par.tx = (0.5 - e.clientX / innerWidth) * 18 * w;
+      par.ty = (0.5 - e.clientY / innerHeight) * 12 * w;
+      kick();
+    }, { passive: true });
+    hero.addEventListener("pointerleave", () => { par.tx = 0; par.ty = 0; kick(); });
+    // a tile takes you to its technique
+    tiles.forEach((t) => t.addEventListener("click", (e) => {
+      const li = document.getElementById(t.hash.slice(1));
+      if (!li) return;
+      e.preventDefault();
+      li.scrollIntoView({ behavior: "smooth", block: "center" });
+      li.focus({ preventScroll: true });
+    }));
+    // the ring starts off screen: fetch it once the page is in, so no tile arrives empty
+    addEventListener("load", () => tiles.forEach((t) => { const img = $("img", t); if (img) img.loading = "eager"; }), { once: true });
+    layout();
+    (document.fonts ? document.fonts.ready : Promise.resolve()).then(layout);
+  }
+
   /* ---------- the live monogram ---------- */
   const mono = $("[data-mono]");
   if (mono) {
     const hero = $("[data-hero]");
+    const host = $("[data-piece-in]") || hero; // the light lives in the leather, which may be scaled
     const input = $(".mono__input", mono);
     const layers = $$(".mono__l", mono);
     const light = $("[data-light]");
@@ -71,19 +198,24 @@
       mono.classList.toggle("is-ghost", !v);
       if (show !== last) { render(show); last = show; stamp(); }
     });
+    // the finish chosen here is outlined in the ring of techniques below
+    const match = (f) => $$(".atlas__t").forEach((t) => t.classList.toggle("is-match", (t.dataset.match || "").split(" ").includes(f)));
     $$(".finish button").forEach((btn) => btn.addEventListener("click", () => {
       $$(".finish button").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
       mono.dataset.finish = btn.dataset.finish;
+      match(btn.dataset.finish);
       stamp();
     }));
+    match(mono.dataset.finish);
     (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(stamp, 120));
 
     // light: follows a fine pointer, or sweeps slowly on its own; only while the hero is on screen
     if (!reduce && light) {
       let W = 0, H = 0, cx = 0, cy = 0;
+      const scale = (r) => r.width / (host.offsetWidth || 1);
       const measure = () => {
-        const r = hero.getBoundingClientRect(); W = r.width; H = r.height;
-        const m = mono.getBoundingClientRect(); cx = m.left - r.left + m.width / 2; cy = m.top - r.top + m.height / 2;
+        const r = host.getBoundingClientRect(), k = scale(r); W = host.offsetWidth; H = host.offsetHeight;
+        const m = mono.getBoundingClientRect(); cx = (m.left - r.left + m.width / 2) / k; cy = (m.top - r.top + m.height / 2) / k;
       };
       measure();
       addEventListener("resize", measure, { passive: true });
@@ -92,7 +224,11 @@
       const frame = (now) => {
         raf = 0;
         if (!visible) return;
-        if (now - lastMove > 3500) { // idle sweep, slow ellipse around the monogram
+        if (R.p > 0.002 && now - lastMove > 600) { // scrolling: the light rakes across the gold as the piece is lifted
+          const k = Math.min(1, R.p * 2.2);
+          tx = W * (0.14 + 0.72 * k);
+          ty = cy - H * (0.22 - 0.12 * k);
+        } else if (now - lastMove > 3500) { // idle sweep, slow ellipse around the monogram
           const t = (now - t0) / 1000;
           tx = cx + Math.cos(t * 0.45) * W * 0.32;
           ty = cy + Math.sin(t * 0.31) * H * 0.26 - H * 0.06;
@@ -109,8 +245,8 @@
       const start = () => { if (!raf && visible) raf = requestAnimationFrame(frame); };
       hero.addEventListener("pointermove", (e) => {
         if (e.pointerType === "touch") return;
-        const r = hero.getBoundingClientRect();
-        tx = e.clientX - r.left; ty = e.clientY - r.top; lastMove = performance.now();
+        const r = host.getBoundingClientRect(), k = scale(r);
+        tx = (e.clientX - r.left) / k; ty = (e.clientY - r.top) / k; lastMove = performance.now();
         start();
       }, { passive: true });
       if (io) new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible) { measure(); start(); } }, { threshold: 0.05 }).observe(hero);

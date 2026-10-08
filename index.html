@@ -23,7 +23,7 @@ L&#x27;équipe de Cobalt Création vous accompagne avec passion et rigueur dans 
 <link rel="preload" href="assets/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/bodonimoda.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/site.css">
-<script>document.documentElement.classList.add('js')</script>
+<script>(function(d){d.classList.add('js');if(matchMedia('(prefers-reduced-motion: no-preference)').matches&&window.CSS&&CSS.supports('overflow','clip'))d.classList.add('has-run')})(document.documentElement)</script>
 <script src="assets/site.js" defer></script>
 </head>
 <body class="p-home">
@@ -40,10 +40,14 @@ L&#x27;équipe de Cobalt Création vous accompagne avec passion et rigueur dans 
   <div class="ov__foot"><span>35, Boulevard Berthier - 75017 Paris</span><a href="tel:+33144098185">+33 (0) 1 44 09 81 85</a><a href="mailto:contact@cobaltcreation.com">contact@cobaltcreation.com</a><span>Horaires d’ouverture : 9h30 - 18h30</span></div>
 </nav>
 <main id="contenu">
+<div class="run" data-run>
 <section class="hero" data-hero aria-labelledby="hero-t">
   <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute"><filter id="torn" x="-4%" y="-4%" width="108%" height="108%"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
+  <div class="piece__shadow" aria-hidden="true" data-shadow></div>
+  <div class="piece" data-piece><div class="piece__in" data-piece-in>
   <div class="hero__leather" aria-hidden="true"></div>
   <div class="hero__light" aria-hidden="true" data-light></div>
+  <svg class="piece__stitch" aria-hidden="true" focusable="false" data-stitch><defs><mask id="sew" maskUnits="userSpaceOnUse" x="-50%" y="-50%" width="200%" height="200%"><path class="sew"/><path class="sew"/></mask></defs><path class="rim"/><g mask="url(#sew)"><path class="stitch stitch--shade"/><path class="stitch"/></g></svg>
   <div class="hero__stage">
     <div class="mono is-ghost" data-mono data-finish="foil">
       <span class="mono__l mono__shadow" aria-hidden="true"></span>
@@ -51,17 +55,20 @@ L&#x27;équipe de Cobalt Création vous accompagne avec passion et rigueur dans 
       <span class="mono__l mono__face" aria-hidden="true"></span>
       <input class="mono__input" id="initiales" name="initiales" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="initiales-aide">
     </div>
-    <label class="mono__field" for="initiales"><span class="mono__label">Écrivez vos initiales</span><span class="mono__rule" aria-hidden="true"></span><span class="sr-only" id="initiales-aide">Trois lettres au plus. Le monogramme se met à jour pendant la saisie.</span></label>
-    <div class="finish" role="group" aria-label="Finition du monogramme"><button type="button" data-finish="foil" aria-pressed="true">Marquage à chaud</button><button type="button" data-finish="gravure" aria-pressed="false">Gravure</button><button type="button" data-finish="emboss" aria-pressed="false">Embossage</button><button type="button" data-finish="leaf" aria-pressed="false">Feuille d’or</button></div>
+    <label class="mono__field" for="initiales" data-fade><span class="mono__label">Écrivez vos initiales</span><span class="mono__rule" aria-hidden="true"></span><span class="sr-only" id="initiales-aide">Trois lettres au plus. Le monogramme se met à jour pendant la saisie.</span></label>
+    <div class="finish" role="group" aria-label="Finition du monogramme" data-fade><button type="button" data-finish="foil" aria-pressed="true">Marquage à chaud</button><button type="button" data-finish="gravure" aria-pressed="false">Gravure</button><button type="button" data-finish="emboss" aria-pressed="false">Embossage</button><button type="button" data-finish="leaf" aria-pressed="false">Feuille d’or</button></div>
   </div>
-  <div class="hero__foot">
+  <div class="hero__foot" data-fade>
     <div class="hero__copy" data-settle>
       <h1 id="hero-t">Ateliers de personnalisation sur-mesure</h1>
       <p>Chez Cobalt Création, nous enrichissons l’expérience client des plus grandes maisons de luxe depuis plus de 10 ans.</p>
     </div>
     <a class="link" href="contact-feedback/" data-settle>Nous contacter <span aria-hidden="true">&rarr;</span></a>
   </div>
-</section><section class="sec gestes" aria-labelledby="gestes-t">
+  </div></div>
+  <nav class="atlas" aria-label="Nos ateliers signatures" data-atlas><a class="atlas__t" href="#geste-0" data-g="0" data-match="gravure"><picture><source type="image/avif" srcset="assets/media/50a83d9d3d18-800.avif 800w, assets/media/50a83d9d3d18-1600.avif 1600w" sizes="(max-width: 767px) 60vw, 46vw"><img src="assets/media/50a83d9d3d18-800.jpg" srcset="assets/media/50a83d9d3d18-800.jpg 800w, assets/media/50a83d9d3d18-1600.jpg 1600w" sizes="(max-width: 767px) 60vw, 46vw" width="800" height="564" alt="" loading="lazy" decoding="async"></picture><span class="atlas__l">La Gravure</span></a><a class="atlas__t" href="#geste-1" data-g="1" data-match="leaf"><picture><source type="image/avif" srcset="assets/media/e299d102def1-800.avif 800w, assets/media/e299d102def1-1600.avif 1600w" sizes="(max-width: 767px) 60vw, 46vw"><img src="assets/media/e299d102def1-800.jpg" srcset="assets/media/e299d102def1-800.jpg 800w, assets/media/e299d102def1-1600.jpg 1600w" sizes="(max-width: 767px) 60vw, 46vw" width="800" height="564" alt="" loading="lazy" decoding="async"></picture><span class="atlas__l">La feuille d’or</span></a><a class="atlas__t" href="#geste-2" data-g="2"><picture><source type="image/avif" srcset="assets/media/facebf48bc61-800.avif 800w, assets/media/facebf48bc61-1600.avif 1600w" sizes="(max-width: 767px) 60vw, 46vw"><img src="assets/media/facebf48bc61-800.jpg" srcset="assets/media/facebf48bc61-800.jpg 800w, assets/media/facebf48bc61-1600.jpg 1600w" sizes="(max-width: 767px) 60vw, 46vw" width="800" height="564" alt="" loading="lazy" decoding="async"></picture><span class="atlas__l">L’illustration</span></a><a class="atlas__t" href="#geste-3" data-g="3" data-match="foil emboss"><picture><source type="image/avif" srcset="assets/media/b8a227d0afb9-800.avif 800w, assets/media/b8a227d0afb9-1600.avif 1600w" sizes="(max-width: 767px) 60vw, 46vw"><img src="assets/media/b8a227d0afb9-800.jpg" srcset="assets/media/b8a227d0afb9-800.jpg 800w, assets/media/b8a227d0afb9-1600.jpg 1600w" sizes="(max-width: 767px) 60vw, 46vw" width="800" height="564" alt="" loading="lazy" decoding="async"></picture><span class="atlas__l">L’embossage et la dorure à chaud</span></a><a class="atlas__t" href="#geste-4" data-g="4"><picture><source type="image/avif" srcset="assets/media/b7e59559aa06-800.avif 800w, assets/media/b7e59559aa06-1600.avif 1600w" sizes="(max-width: 767px) 60vw, 46vw"><img src="assets/media/b7e59559aa06-800.jpg" srcset="assets/media/b7e59559aa06-800.jpg 800w, assets/media/b7e59559aa06-1600.jpg 1600w" sizes="(max-width: 767px) 60vw, 46vw" width="800" height="585" alt="" loading="lazy" decoding="async"></picture><span class="atlas__l">La peinture</span></a><a class="atlas__t" href="#geste-5" data-g="5"><picture><source type="image/avif" srcset="assets/media/8b00aacc5f59-800.avif 800w, assets/media/8b00aacc5f59-1600.avif 1600w" sizes="(max-width: 767px) 60vw, 46vw"><img src="assets/media/8b00aacc5f59-800.jpg" srcset="assets/media/8b00aacc5f59-800.jpg 800w, assets/media/8b00aacc5f59-1600.jpg 1600w" sizes="(max-width: 767px) 60vw, 46vw" width="800" height="564" alt="" loading="lazy" decoding="async"></picture><span class="atlas__l">La broderie</span></a><a class="atlas__t" href="#geste-6" data-g="6"><picture><source type="image/avif" srcset="assets/media/667ceae7bab3-800.avif 800w, assets/media/667ceae7bab3-1600.avif 1600w" sizes="(max-width: 767px) 60vw, 46vw"><img src="assets/media/667ceae7bab3-800.jpg" srcset="assets/media/667ceae7bab3-800.jpg 800w, assets/media/667ceae7bab3-1600.jpg 1600w" sizes="(max-width: 767px) 60vw, 46vw" width="800" height="588" alt="" loading="lazy" decoding="async"></picture><span class="atlas__l">L’aérographe</span></a><a class="atlas__t" href="#geste-7" data-g="7"><picture><source type="image/avif" srcset="assets/media/cfab69ee828b-800.avif 800w, assets/media/cfab69ee828b-1600.avif 1600w" sizes="(max-width: 767px) 60vw, 46vw"><img src="assets/media/cfab69ee828b-800.jpg" srcset="assets/media/cfab69ee828b-800.jpg 800w, assets/media/cfab69ee828b-1600.jpg 1600w" sizes="(max-width: 767px) 60vw, 46vw" width="800" height="800" alt="" loading="lazy" decoding="async"></picture><span class="atlas__l">La calligraphie</span></a></nav>
+</section>
+</div><section class="sec gestes" aria-labelledby="gestes-t">
   <div class="wrap">
     <div class="sec__head" data-settle>
       <h2 id="gestes-t" class="d2">Nos ateliers signatures</h2>
@@ -69,7 +76,7 @@ L&#x27;équipe de Cobalt Création vous accompagne avec passion et rigueur dans 
     </div>
     <div class="gestes__body">
       <div class="gestes__media" aria-hidden="true"><figure data-g="0" class="is-on"><picture><source type="image/avif" srcset="assets/media/50a83d9d3d18-800.avif 800w, assets/media/50a83d9d3d18-1600.avif 1600w" sizes="50vw"><img src="assets/media/50a83d9d3d18-800.jpg" srcset="assets/media/50a83d9d3d18-800.jpg 800w, assets/media/50a83d9d3d18-1600.jpg 1600w" sizes="50vw" width="800" height="564" alt="" loading="lazy" decoding="async"></picture></figure><figure data-g="1"><picture><source type="image/avif" srcset="assets/media/e299d102def1-800.avif 800w, assets/media/e299d102def1-1600.avif 1600w" sizes="50vw"><img src="assets/media/e299d102def1-800.jpg" srcset="assets/media/e299d102def1-800.jpg 800w, assets/media/e299d102def1-1600.jpg 1600w" sizes="50vw" width="800" height="564" alt="" loading="lazy" decoding="async"></picture></figure><figure data-g="2"><picture><source type="image/avif" srcset="assets/media/facebf48bc61-800.avif 800w, assets/media/facebf48bc61-1600.avif 1600w" sizes="50vw"><img src="assets/media/facebf48bc61-800.jpg" srcset="assets/media/facebf48bc61-800.jpg 800w, assets/media/facebf48bc61-1600.jpg 1600w" sizes="50vw" width="800" height="564" alt="" loading="lazy" decoding="async"></picture></figure><figure data-g="3"><picture><source type="image/avif" srcset="assets/media/b8a227d0afb9-800.avif 800w, assets/media/b8a227d0afb9-1600.avif 1600w" sizes="50vw"><img src="assets/media/b8a227d0afb9-800.jpg" srcset="assets/media/b8a227d0afb9-800.jpg 800w, assets/media/b8a227d0afb9-1600.jpg 1600w" sizes="50vw" width="800" height="564" alt="" loading="lazy" decoding="async"></picture></figure><figure data-g="4"><picture><source type="image/avif" srcset="assets/media/b7e59559aa06-800.avif 800w, assets/media/b7e59559aa06-1600.avif 1600w" sizes="50vw"><img src="assets/media/b7e59559aa06-800.jpg" srcset="assets/media/b7e59559aa06-800.jpg 800w, assets/media/b7e59559aa06-1600.jpg 1600w" sizes="50vw" width="800" height="585" alt="" loading="lazy" decoding="async"></picture></figure><figure data-g="5"><picture><source type="image/avif" srcset="assets/media/8b00aacc5f59-800.avif 800w, assets/media/8b00aacc5f59-1600.avif 1600w" sizes="50vw"><img src="assets/media/8b00aacc5f59-800.jpg" srcset="assets/media/8b00aacc5f59-800.jpg 800w, assets/media/8b00aacc5f59-1600.jpg 1600w" sizes="50vw" width="800" height="564" alt="" loading="lazy" decoding="async"></picture></figure><figure data-g="6"><picture><source type="image/avif" srcset="assets/media/667ceae7bab3-800.avif 800w, assets/media/667ceae7bab3-1600.avif 1600w" sizes="50vw"><img src="assets/media/667ceae7bab3-800.jpg" srcset="assets/media/667ceae7bab3-800.jpg 800w, assets/media/667ceae7bab3-1600.jpg 1600w" sizes="50vw" width="800" height="588" alt="" loading="lazy" decoding="async"></picture></figure><figure data-g="7"><picture><source type="image/avif" srcset="assets/media/cfab69ee828b-800.avif 800w, assets/media/cfab69ee828b-1600.avif 1600w" sizes="50vw"><img src="assets/media/cfab69ee828b-800.jpg" srcset="assets/media/cfab69ee828b-800.jpg 800w, assets/media/cfab69ee828b-1600.jpg 1600w" sizes="50vw" width="800" height="800" alt="" loading="lazy" decoding="async"></picture></figure><figure data-g="8"><picture><source type="image/avif" srcset="assets/media/afd6c00c7502-800.avif 800w, assets/media/afd6c00c7502-1600.avif 1600w" sizes="50vw"><img src="assets/media/afd6c00c7502-800.jpg" srcset="assets/media/afd6c00c7502-800.jpg 800w, assets/media/afd6c00c7502-1600.jpg 1600w" sizes="50vw" width="800" height="800" alt="" loading="lazy" decoding="async"></picture></figure><figure data-g="9"><picture><source type="image/avif" srcset="assets/media/f410312b0ce8-800.avif 800w, assets/media/f410312b0ce8-1600.avif 1600w" sizes="50vw"><img src="assets/media/f410312b0ce8-800.jpg" srcset="assets/media/f410312b0ce8-800.jpg 800w, assets/media/f410312b0ce8-1600.jpg 1600w" sizes="50vw" width="800" height="800" alt="" loading="lazy" decoding="async"></picture></figure></div>
-      <ul class="gestes__list"><li class="geste is-on" data-g="0">
+      <ul class="gestes__list"><li class="geste is-on" id="geste-0" tabindex="-1" data-g="0">
         <div class="geste__img"><picture><source type="image/avif" srcset="assets/media/50a83d9d3d18-800.avif 800w, assets/media/50a83d9d3d18-1600.avif 1600w" sizes="92vw"><img src="assets/media/50a83d9d3d18-800.jpg" srcset="assets/media/50a83d9d3d18-800.jpg 800w, assets/media/50a83d9d3d18-1600.jpg 1600w" sizes="92vw" width="800" height="564" alt="La Gravure" loading="lazy" decoding="async"></picture></div>
         <h3>La Gravure</h3>
         <p>Idéale pour sublimer le verre, certains plastiques, la céramique, la laque...
@@ -77,7 +84,7 @@ La gravure est réalisée par un artiste à la main.
 Nous pouvons calligraphier un texte mais également reproduire ou créer
 une illustration selon votre brief.
 Les gravures peuvent être colorées ou dorées à la feuille.</p>
-      </li><li class="geste" data-g="1">
+      </li><li class="geste" id="geste-1" tabindex="-1" data-g="1">
         <div class="geste__img"><picture><source type="image/avif" srcset="assets/media/e299d102def1-800.avif 800w, assets/media/e299d102def1-1600.avif 1600w" sizes="92vw"><img src="assets/media/e299d102def1-800.jpg" srcset="assets/media/e299d102def1-800.jpg 800w, assets/media/e299d102def1-1600.jpg 1600w" sizes="92vw" width="800" height="564" alt="La feuille d’or" loading="lazy" decoding="async"></picture></div>
         <h3>La feuille d’or</h3>
         <p>Idéale pour sublimer le verre, la céramique, le papier, le marbre ...
@@ -87,7 +94,7 @@ La feuille d’or permet une reproduction d’un motif ou l’application d’in
 Un traitement plus libre de la feuille d’or offrira un décor unique et lumineux.
 
 Feuille or ou argent véritable/faux or ou faux argent.</p>
-      </li><li class="geste" data-g="2">
+      </li><li class="geste" id="geste-2" tabindex="-1" data-g="2">
         <div class="geste__img"><picture><source type="image/avif" srcset="assets/media/facebf48bc61-800.avif 800w, assets/media/facebf48bc61-1600.avif 1600w" sizes="92vw"><img src="assets/media/facebf48bc61-800.jpg" srcset="assets/media/facebf48bc61-800.jpg 800w, assets/media/facebf48bc61-1600.jpg 1600w" sizes="92vw" width="800" height="564" alt="L’illustration" loading="lazy" decoding="async"></picture></div>
         <h3>L’illustration</h3>
         <p>Idéale pour faire rêver vos invités.
@@ -97,7 +104,7 @@ Nos artistes vous accompagnent dans la réalisation de vos projets, du brief jus
 
 
 Nos artistes peuvent également réaliser des pièces uniques, des cadeaux d’exception.</p>
-      </li><li class="geste" data-g="3">
+      </li><li class="geste" id="geste-3" tabindex="-1" data-g="3">
         <div class="geste__img"><picture><source type="image/avif" srcset="assets/media/b8a227d0afb9-800.avif 800w, assets/media/b8a227d0afb9-1600.avif 1600w" sizes="92vw"><img src="assets/media/b8a227d0afb9-800.jpg" srcset="assets/media/b8a227d0afb9-800.jpg 800w, assets/media/b8a227d0afb9-1600.jpg 1600w" sizes="92vw" width="800" height="564" alt="L’embossage et la dorure à chaud" loading="lazy" decoding="async"></picture></div>
         <h3>L’embossage et la dorure à chaud</h3>
         <p>Idéal pour sublimer le cuir, le simili cuir, le papier, le bois ...
@@ -107,7 +114,7 @@ Cette technique permet le marquage avec ou sans or de caractères d’imprimerie
 Typographies avec ou sans empattements disponibles : 0,5 cm ou 1 cm.
 
 Film or ou argent véritable/faux or ou couleurs.</p>
-      </li><li class="geste" data-g="4">
+      </li><li class="geste" id="geste-4" tabindex="-1" data-g="4">
         <div class="geste__img"><picture><source type="image/avif" srcset="assets/media/b7e59559aa06-800.avif 800w, assets/media/b7e59559aa06-1600.avif 1600w" sizes="92vw"><img src="assets/media/b7e59559aa06-800.jpg" srcset="assets/media/b7e59559aa06-800.jpg 800w, assets/media/b7e59559aa06-1600.jpg 1600w" sizes="92vw" width="800" height="585" alt="La peinture" loading="lazy" decoding="async"></picture></div>
         <h3>La peinture</h3>
         <p>Idéale pour sublimer le verre, le papier, le textile, le cuir, le bois ...
@@ -115,7 +122,7 @@ Film or ou argent véritable/faux or ou couleurs.</p>
 La peinture permet la création d’une image et une grande liberté dans les styles proposés.
 
 Une grande palette colorielle est disponible.</p>
-      </li><li class="geste" data-g="5">
+      </li><li class="geste" id="geste-5" tabindex="-1" data-g="5">
         <div class="geste__img"><picture><source type="image/avif" srcset="assets/media/8b00aacc5f59-800.avif 800w, assets/media/8b00aacc5f59-1600.avif 1600w" sizes="92vw"><img src="assets/media/8b00aacc5f59-800.jpg" srcset="assets/media/8b00aacc5f59-800.jpg 800w, assets/media/8b00aacc5f59-1600.jpg 1600w" sizes="92vw" width="800" height="564" alt="La broderie" loading="lazy" decoding="async"></picture></div>
         <h3>La broderie</h3>
         <p>Idéale pour sublimer le textile.
@@ -125,7 +132,7 @@ La broderie permet la reproduction à l’identique d’un logo, d’un dessin v
 Nous pouvons également reproduire ou créer un motif selon votre brief.
 
 Une grande palette colorielle est disponible.</p>
-      </li><li class="geste" data-g="6">
+      </li><li class="geste" id="geste-6" tabindex="-1" data-g="6">
         <div class="geste__img"><picture><source type="image/avif" srcset="assets/media/667ceae7bab3-800.avif 800w, assets/media/667ceae7bab3-1600.avif 1600w" sizes="92vw"><img src="assets/media/667ceae7bab3-800.jpg" srcset="assets/media/667ceae7bab3-800.jpg 800w, assets/media/667ceae7bab3-1600.jpg 1600w" sizes="92vw" width="800" height="588" alt="L’aérographe" loading="lazy" decoding="async"></picture></div>
         <h3>L’aérographe</h3>
         <p>Idéal pour sublimer le textile, le cuir, le bois ...
@@ -137,7 +144,7 @@ Nous pouvons également reproduire ou créer une illustration selon votre brief.
 L’aérographe permet une grande liberté dans la création graphique.
 
  Une grande palette colorielle est disponible.</p>
-      </li><li class="geste" data-g="7">
+      </li><li class="geste" id="geste-7" tabindex="-1" data-g="7">
         <div class="geste__img"><picture><source type="image/avif" srcset="assets/media/cfab69ee828b-800.avif 800w, assets/media/cfab69ee828b-1600.avif 1600w" sizes="92vw"><img src="assets/media/cfab69ee828b-800.jpg" srcset="assets/media/cfab69ee828b-800.jpg 800w, assets/media/cfab69ee828b-1600.jpg 1600w" sizes="92vw" width="800" height="800" alt="La calligraphie" loading="lazy" decoding="async"></picture></div>
         <h3>La calligraphie</h3>
         <p>Idéale pour faire rêver vos invités.
@@ -147,11 +154,11 @@ Nos artistes vous accompagnent dans la réalisation de vos projets, du brief jus
 
 
 Nos artistes peuvent également réaliser des pièces uniques, des cadeaux d’exception.</p>
-      </li><li class="geste" data-g="8">
+      </li><li class="geste" id="geste-8" tabindex="-1" data-g="8">
         <div class="geste__img"><picture><source type="image/avif" srcset="assets/media/afd6c00c7502-800.avif 800w, assets/media/afd6c00c7502-1600.avif 1600w" sizes="92vw"><img src="assets/media/afd6c00c7502-800.jpg" srcset="assets/media/afd6c00c7502-800.jpg 800w, assets/media/afd6c00c7502-1600.jpg 1600w" sizes="92vw" width="800" height="800" alt="Atelier Floral" loading="lazy" decoding="async"></picture></div>
         <h3>Atelier Floral</h3>
         <p></p>
-      </li><li class="geste" data-g="9">
+      </li><li class="geste" id="geste-9" tabindex="-1" data-g="9">
         <div class="geste__img"><picture><source type="image/avif" srcset="assets/media/f410312b0ce8-800.avif 800w, assets/media/f410312b0ce8-1600.avif 1600w" sizes="92vw"><img src="assets/media/f410312b0ce8-800.jpg" srcset="assets/media/f410312b0ce8-800.jpg 800w, assets/media/f410312b0ce8-1600.jpg 1600w" sizes="92vw" width="800" height="800" alt="Les Ateliers Participatifs" loading="lazy" decoding="async"></picture></div>
         <h3>Les Ateliers Participatifs</h3>
         <p></p>
