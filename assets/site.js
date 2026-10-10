@@ -1,4 +1,6 @@
-/* Cobalt Création, V3 « Atelier ». No dependencies. */
+/* Cobalt Création, V3 « Atelier ».
+   GSAP + ScrollTrigger (self-hosted) for the scroll story; plain DOM for the rest.
+   Reduced motion or no GSAP: the hero is not pinned, the three sentences sit in the page, nothing moves on its own. */
 (() => {
   "use strict";
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -6,8 +8,22 @@
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const io = "IntersectionObserver" in window;
+  const G = window.gsap && window.ScrollTrigger && !reduce ? window.gsap : null;
+  const root = document.documentElement;
+  if (G) G.registerPlugin(window.ScrollTrigger);
+  else root.classList.add("no-gsap", "no-story");
+  const safe = (w) => w.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const splitWords = (el) => {
+    const words = el.textContent.trim().split(/\s+/);
+    el.setAttribute("aria-label", el.textContent.trim());
+    el.innerHTML = words.map((w, i) => `<span class="sw" aria-hidden="true"><span class="sw__in" style="--w:${i}">${safe(w)}</span></span>`).join(" ");
+  };
 
-  /* ---------- top bar turns solid once the page moves ---------- */
+  /* ---------- split headings + the hero sentences ---------- */
+  $$(".split").forEach(splitWords);
+  $$(".band").forEach(splitWords);
+
+  /* ---------- top bar ---------- */
   const tb = $("[data-topbar]");
   if (tb && io) {
     const s = document.createElement("div");
@@ -17,53 +33,100 @@
     new IntersectionObserver(([e]) => tb.classList.toggle("is-solid", !e.isIntersecting && e.boundingClientRect.top < 0)).observe(s);
   }
 
-  /* ---------- overlay menu, born from the top ---------- */
+  /* ---------- overlay menu ---------- */
   const mb = $(".tb__menu"), ov = $("[data-ov]");
   if (mb && ov) {
     const label = $("[data-menu-label]", mb);
     const set = (open) => {
       mb.setAttribute("aria-expanded", String(open));
       ov.classList.toggle("is-open", open);
-      document.documentElement.style.overflow = open ? "hidden" : "";
+      root.style.overflow = open ? "hidden" : "";
       label.textContent = open ? "Fermer" : "Menu";
-      tb.classList.toggle("is-open", open);
       if (open) setTimeout(() => $("a", ov)?.focus(), 80);
     };
     mb.addEventListener("click", () => set(mb.getAttribute("aria-expanded") !== "true"));
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && ov.classList.contains("is-open")) { set(false); mb.focus(); } });
   }
 
-  /* ---------- settle-in reveal ---------- */
-  const settle = $$("[data-settle]");
-  if (settle.length && io && !reduce) {
+  /* ---------- reveals: settle-in, split headings, crew, contact-sheet cells ---------- */
+  $$("[data-crew] li, [data-crew] h3").forEach((el, i) => el.style.setProperty("--i", i % 14));
+  const sheet = $(".sheet__grid");
+  const cells = $$(".cs");
+  const placeCells = () => {
+    if (!sheet) return;
+    const cols = getComputedStyle(sheet).gridTemplateColumns.split(" ").length || 1;
+    cells.forEach((c, i) => c.style.setProperty("--c", i % cols));
+  };
+  placeCells();
+  const revealEls = $$("[data-settle], .split, [data-crew], .cs");
+  if (io && !reduce) {
     const o = new IntersectionObserver((es) => {
       for (const e of es) if (e.isIntersecting || e.boundingClientRect.top <= 0) { e.target.classList.add("is-in"); o.unobserve(e.target); }
-    }, { rootMargin: "0px 0px -6% 0px", threshold: 0.06 });
-    settle.forEach((el) => o.observe(el));
-  } else settle.forEach((el) => el.classList.add("is-in"));
+    }, { rootMargin: "0px 0px -6% 0px", threshold: 0.05 });
+    revealEls.forEach((el) => o.observe(el));
+    // safety sweep: a fast scroll can jump over an element without the observer ever reporting it
+    const sweep = setInterval(() => {
+      const left = revealEls.filter((el) => !el.classList.contains("is-in"));
+      if (!left.length) return clearInterval(sweep);
+      left.forEach((el) => { if (el.getBoundingClientRect().top < innerHeight) { el.classList.add("is-in"); o.unobserve(el); } });
+    }, 500);
+  } else revealEls.forEach((el) => el.classList.add("is-in"));
 
-  /* ---------- the live monogram ---------- */
+  /* ---------- the live monogram (vector SVG: sharp at any size) ---------- */
   const mono = $("[data-mono]");
   if (mono) {
     const hero = $("[data-hero]");
     const input = $(".mono__input", mono);
     const layers = $$(".mono__l", mono);
     const light = $("[data-light]");
+    const foil = $("#g-foil"), leaf = $("#g-leaf");
+    const NS = "http://www.w3.org/2000/svg";
     const DEFAULT = "CC";
     const render = (txt) => {
-      const html = [...txt].map((ch) => `<span class="ch">${ch}</span>`).join('<span class="sep">·</span>');
-      layers.forEach((l) => { l.innerHTML = html; });
+      layers.forEach((t) => {
+        t.textContent = "";
+        [...txt].forEach((ch, i) => {
+          if (i) {
+            const d = document.createElementNS(NS, "tspan");
+            d.setAttribute("class", "sep"); d.setAttribute("dx", "20"); d.setAttribute("dy", "-92"); d.textContent = "·";
+            t.appendChild(d);
+          }
+          const s = document.createElementNS(NS, "tspan");
+          if (i) { s.setAttribute("dx", "20"); s.setAttribute("dy", "92"); }
+          s.textContent = ch;
+          t.appendChild(s);
+        });
+      });
+    };
+    let sheen = 34;
+    const setSheen = (v) => {
+      sheen = v;
+      foil?.setAttribute("gradientTransform", `translate(${((v - 50) * 14).toFixed(1)} 0)`);
+      leaf?.setAttribute("patternTransform", `translate(${((v - 50) * 3).toFixed(1)} 0)`);
+    };
+    let sweeping = false;
+    const sweep = () => {
+      if (reduce) return;
+      sweeping = true;
+      const t0 = performance.now(), d = 1600, from = 0, to = 100;
+      const step = (now) => {
+        const k = Math.min(1, (now - t0) / d), e = 1 - Math.pow(1 - k, 3);
+        setSheen(from + (to - from) * e);
+        if (k < 1) requestAnimationFrame(step); else sweeping = false;
+      };
+      setTimeout(() => requestAnimationFrame(step), 550);
     };
     const stamp = () => {
       if (reduce) return;
       mono.classList.remove("is-stamp");
-      void mono.offsetWidth;
+      void mono.getBoundingClientRect();
       mono.classList.add("is-stamp");
+      sweep();
     };
     const clean = (v) => v.normalize("NFC").replace(/[^\p{L}]/gu, "").toUpperCase().slice(0, 3);
     let last = DEFAULT;
     render(DEFAULT);
-    mono.classList.remove("is-ghost");
+    setSheen(34);
     input.addEventListener("input", () => {
       const v = clean(input.value);
       if (input.value !== v) input.value = v;
@@ -72,13 +135,13 @@
       if (show !== last) { render(show); last = show; stamp(); }
     });
     $$(".finish button").forEach((btn) => btn.addEventListener("click", () => {
-      $$(".finish button").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+      $$(".finish button").forEach((x) => x.setAttribute("aria-pressed", String(x === btn)));
       mono.dataset.finish = btn.dataset.finish;
       stamp();
     }));
     (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(stamp, 120));
 
-    // light: follows a fine pointer, or sweeps slowly on its own; only while the hero is on screen
+    // light follows a fine pointer, or sweeps slowly on its own, only while the hero is on screen
     if (!reduce && light) {
       let W = 0, H = 0, cx = 0, cy = 0;
       const measure = () => {
@@ -87,12 +150,13 @@
       };
       measure();
       addEventListener("resize", measure, { passive: true });
-      let tx = W * 0.3, ty = H * 0.28, x = tx, y = ty, raf = 0, visible = true, lastMove = -1e9, t0 = performance.now();
-      let plx = 0, ply = 0, psh = 0;
+      let tx = W * 0.3, ty = H * 0.28, x = tx, y = ty, raf = 0, visible = true, lastMove = -1e9;
+      const t0 = performance.now();
+      let plx = 0, ply = 0;
       const frame = (now) => {
         raf = 0;
         if (!visible) return;
-        if (now - lastMove > 3500) { // idle sweep, slow ellipse around the monogram
+        if (now - lastMove > 3500) {
           const t = (now - t0) / 1000;
           tx = cx + Math.cos(t * 0.45) * W * 0.32;
           ty = cy + Math.sin(t * 0.31) * H * 0.26 - H * 0.06;
@@ -101,9 +165,9 @@
         light.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
         const dx = x - cx, dy = y - cy, len = Math.hypot(dx, dy) || 1;
         const k = Math.min(1, len / (W * 0.35));
-        const lx = (dx / len) * k, ly = (dy / len) * k, sh = 18 + (x / (W || 1)) * 64;
+        const lx = (dx / len) * k, ly = (dy / len) * k;
         if (Math.abs(lx - plx) > 0.01 || Math.abs(ly - ply) > 0.01) { mono.style.setProperty("--lx", lx.toFixed(3)); mono.style.setProperty("--ly", ly.toFixed(3)); plx = lx; ply = ly; }
-        if (Math.abs(sh - psh) > 0.4) { mono.style.setProperty("--sheen", sh.toFixed(1) + "%"); psh = sh; }
+        if (!sweeping) { const sh = 18 + (x / (W || 1)) * 64; if (Math.abs(sh - sheen) > 0.4) setSheen(sh); }
         raf = requestAnimationFrame(frame);
       };
       const start = () => { if (!raf && visible) raf = requestAnimationFrame(frame); };
@@ -118,21 +182,55 @@
     }
   }
 
-  /* ---------- signature techniques: pinned image follows the text ---------- */
+  /* ---------- signature techniques: the image wipes in as the text arrives ---------- */
   const gestes = $$(".geste");
   if (gestes.length && io) {
     const figs = $$(".gestes__media figure");
+    let cur = "0";
     const on = (k) => {
+      if (k === cur) return;
+      figs.forEach((f) => {
+        f.classList.toggle("was-on", f.dataset.g === cur);
+        f.classList.toggle("is-on", f.dataset.g === k);
+      });
       gestes.forEach((g) => g.classList.toggle("is-on", g.dataset.g === k));
-      figs.forEach((f) => f.classList.toggle("is-on", f.dataset.g === k));
+      cur = k;
     };
     const o = new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting) on(e.target.dataset.g); }, { rootMargin: "-45% 0px -45% 0px" });
     gestes.forEach((g) => o.observe(g));
   }
 
-  /* ---------- réalisations: filter folded into the heading ---------- */
+  /* ---------- réalisations: columns, filter in the heading ---------- */
   const grid = $("[data-reals]");
+  let colTweens = [];
+  const layoutCols = () => {
+    if (!grid) return;
+    const figs = $$(".rl", grid);
+    const n = innerWidth < 768 ? 2 : 3;
+    const cols = Array.from({ length: n }, () => { const d = document.createElement("div"); d.className = "reals__col"; return d; });
+    const hgt = new Array(n).fill(0);
+    figs.forEach((f) => {
+      if (f.hidden) { cols[0].appendChild(f); return; }
+      const img = $("img", f);
+      const r = img ? (+img.getAttribute("height") / +img.getAttribute("width")) || 1 : 1;
+      const k = hgt.indexOf(Math.min(...hgt));
+      cols[k].appendChild(f); hgt[k] += r + 0.25;
+    });
+    grid.replaceChildren(...cols);
+    grid.classList.add("is-cols");
+    colTweens.forEach((t) => t.scrollTrigger?.kill() || t.kill());
+    colTweens = [];
+    if (G && innerWidth >= 901) {
+      const speeds = [-20, -90, -45];
+      cols.forEach((col, k) => colTweens.push(G.fromTo(col, { y: 24 }, { y: speeds[k], ease: "none",
+        scrollTrigger: { trigger: grid, start: "top bottom", end: "bottom top", scrub: true } })));
+    }
+    window.ScrollTrigger?.refresh();
+  };
   if (grid) {
+    layoutCols();
+    let w = innerWidth;
+    addEventListener("resize", () => { if ((w < 768) !== (innerWidth < 768) || (w < 901) !== (innerWidth < 901)) { w = innerWidth; layoutCols(); } });
     const tabs = $$(".reals__tabs button");
     const more = $("[data-reals-link]"), moreLabel = $("[data-reals-label]");
     tabs.forEach((btn) => btn.addEventListener("click", () => {
@@ -143,26 +241,87 @@
         $$(".rl", grid).forEach((fig) => { fig.hidden = fig.dataset.p !== f; });
         more.href = f + "/";
         moreLabel.textContent = btn.textContent;
+        layoutCols();
         grid.classList.remove("is-out");
+        if (G) G.from($$(".rl:not([hidden])", grid), { y: 70, opacity: 0, scale: 0.96, duration: 1.1, ease: "power3.out", stagger: 0.05, clearProps: "opacity,transform" });
       };
       if (reduce) return swap();
       grid.classList.add("is-out");
-      setTimeout(swap, 300);
+      setTimeout(swap, 320);
     }));
   }
 
-  /* ---------- book tilts toward the pointer ---------- */
+  /* ---------- book: tilt toward the pointer ---------- */
   $$("[data-tilt]").forEach((el) => {
     if (reduce || !fine) return;
     const img = $("img", el);
     el.addEventListener("pointermove", (e) => {
       const r = el.getBoundingClientRect();
       const px = (e.clientX - r.left) / r.width - 0.5, py = (e.clientY - r.top) / r.height - 0.5;
-      img.style.setProperty("--ry", (px * 16 - 4).toFixed(2));
-      img.style.setProperty("--rx", (-py * 10).toFixed(2));
+      img.style.setProperty("--ry", (px * 14).toFixed(2));
+      img.style.setProperty("--rx", (-py * 9).toFixed(2));
     });
     el.addEventListener("pointerleave", () => { img.style.removeProperty("--ry"); img.style.removeProperty("--rx"); });
   });
+
+  /* ---------- scroll story (GSAP) ---------- */
+  if (G) {
+    const ST = window.ScrollTrigger;
+
+    // hero pinned: the monogram withdraws, the agency speaks in three sentences (as in V1)
+    const wrap = $("[data-hero-wrap]");
+    if (wrap) {
+      const tl = G.timeline({ defaults: { ease: "none" }, scrollTrigger: { trigger: wrap, start: "top top", end: "bottom bottom", scrub: 0.8 } });
+      tl.to("[data-controls]", { opacity: 0, y: -30, duration: 0.1 }, 0.03)
+        .to("[data-hero-foot]", { opacity: 0, y: 24, duration: 0.1 }, 0.03)
+        .to("[data-mono]", { scale: 0.46, yPercent: -62, duration: 0.24, ease: "power2.inOut" }, 0.04)
+        .to("[data-veil]", { opacity: 1, duration: 0.26 }, 0.06);
+      $$(".band").forEach((band, k) => {
+        const words = $$(".sw__in", band);
+        const at = 0.16 + k * 0.25;
+        tl.set(band, { opacity: 1 }, at - 0.001)
+          .fromTo(words, { yPercent: 110, opacity: 0 }, { yPercent: 0, opacity: 1, stagger: 0.0045, duration: 0.08, ease: "power3.out" }, at)
+          .to(words, { yPercent: -110, opacity: 0, stagger: 0.002, duration: 0.05, ease: "power2.in" }, at + 0.2)
+          .set(band, { opacity: 0 }, at + 0.25);
+      });
+      tl.to({}, { duration: 0.02 }, 0.98);
+    }
+
+    const mm = G.matchMedia();
+    mm.add("(min-width: 901px)", () => {
+      // deep sections open to full width as they arrive
+      $$("[data-open]").forEach((sec) => {
+        G.fromTo(sec, { clipPath: "inset(6% 5% 0% 5%)" }, { clipPath: "inset(0% 0% 0% 0%)", ease: "none",
+          scrollTrigger: { trigger: sec, start: "top bottom", end: "top 18%", scrub: true } });
+      });
+    });
+
+    // the gold line follows the techniques
+    const line = $("[data-g-line]");
+    if (line) G.to(line, { scaleY: 1, ease: "none", scrollTrigger: { trigger: ".gestes__listwrap", start: "top 55%", end: "bottom 55%", scrub: true } });
+
+    // logo wall: a diagonal cascade, then the slow gold glint (CSS)
+    const wallItems = $$("[data-wall] li");
+    if (wallItems.length) G.from(wallItems, { opacity: 0, y: 26, scale: 0.9, duration: 0.9, ease: "power3.out",
+      stagger: { grid: [8, 7], from: "start", amount: 1.3 }, scrollTrigger: { trigger: "[data-wall]", start: "top 82%", once: true } });
+
+    // the book turns toward the reader
+    const book = $("[data-book3]");
+    if (book) G.fromTo(book, { rotateY: -40, rotateX: 10, y: 80 }, { rotateY: -8, rotateX: 0, y: -30, ease: "none",
+      scrollTrigger: { trigger: "[data-book3-sec]", start: "top bottom", end: "bottom top", scrub: true } });
+
+    // rubric opening image: settles in, then drifts as the page moves on
+    const rh = $("[data-rh]");
+    if (rh) {
+      const img = $("img", rh);
+      G.fromTo(img, { scale: 1.1, opacity: 0.4 }, { scale: 1, opacity: 1, duration: 2.2, ease: "power3.out" });
+      G.to(img, { yPercent: 12, ease: "none", scrollTrigger: { trigger: rh, start: "top top", end: "bottom top", scrub: true } });
+      G.to($(".rh__title", rh), { yPercent: -60, opacity: 0.15, ease: "none", scrollTrigger: { trigger: rh, start: "top top", end: "bottom top", scrub: true } });
+    }
+
+    addEventListener("load", () => { placeCells(); ST.refresh(); });
+    document.fonts?.ready.then(() => ST.refresh());
+  }
 
   /* ---------- viewer ---------- */
   let avif = false;
@@ -198,7 +357,7 @@
       if (!vw.open) {
         if (!fromHistory) { history.pushState({ vw: true }, "", hashes ? `#piece-${data(a).n}` : location.href); pushed = true; }
         vw.showModal();
-        document.documentElement.style.overflow = "hidden";
+        root.style.overflow = "hidden";
       }
       show(items.indexOf(a));
       $(".vw__close", vw).focus();
@@ -206,7 +365,7 @@
     const close = (viaHistory = false) => {
       if (!vw.open) return;
       vw.close();
-      document.documentElement.style.overflow = "";
+      root.style.overflow = "";
       if (!viaHistory && pushed) { pushed = false; history.back(); }
       else if (!viaHistory && hashes) history.replaceState(null, "", location.pathname + location.search);
       (items[cur] || opener)?.focus({ preventScroll: true });
