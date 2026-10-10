@@ -55,8 +55,17 @@
   const placeCells = () => {
     if (!sheet) return;
     const cols = getComputedStyle(sheet).gridTemplateColumns.split(" ").length || 1;
-    cells.forEach((c, i) => c.style.setProperty("--c", i % cols));
+    cells.forEach((c, i) => { c.style.setProperty("--c", i % cols); c.classList.remove("is-wide"); c.style.gridColumn = ""; });
+    // no empty cells: the last photograph stretches across what remains of its row
+    const rem = cells.length % cols;
+    if (rem && cols > 1) {
+      const last = cells[cells.length - 1];
+      const cellW = cells[0].getBoundingClientRect().width;
+      last.classList.add("is-wide"); last.style.gridColumn = `span ${cols - rem + 1}`;
+      last.style.setProperty("--h", cellW + "px");
+    }
   };
+  addEventListener("resize", placeCells, { passive: true });
   placeCells();
   const revealEls = $$("[data-settle], .split, [data-crew], .cs");
   if (io && !reduce) {
@@ -83,6 +92,7 @@
     const NS = "http://www.w3.org/2000/svg";
     const DEFAULT = "CC";
     const render = (txt) => {
+      mono.dispatchEvent(new CustomEvent("mono:text", { detail: txt }));
       layers.forEach((t) => {
         t.textContent = "";
         [...txt].forEach((ch, i) => {
@@ -118,6 +128,7 @@
     };
     const stamp = () => {
       if (reduce) return;
+      mono.dispatchEvent(new CustomEvent("mono:stamp"));
       mono.classList.remove("is-stamp");
       void mono.getBoundingClientRect();
       mono.classList.add("is-stamp");
@@ -206,7 +217,7 @@
   const layoutCols = () => {
     if (!grid) return;
     const figs = $$(".rl", grid);
-    const n = innerWidth < 768 ? 2 : 3;
+    const n = innerWidth < 768 ? 2 : innerWidth < 1200 ? 3 : 4;
     const cols = Array.from({ length: n }, () => { const d = document.createElement("div"); d.className = "reals__col"; return d; });
     const hgt = new Array(n).fill(0);
     figs.forEach((f) => {
@@ -221,7 +232,7 @@
     colTweens.forEach((t) => t.scrollTrigger?.kill() || t.kill());
     colTweens = [];
     if (G && innerWidth >= 901) {
-      const speeds = [-20, -90, -45];
+      const speeds = [-20, -80, -40, -100];
       cols.forEach((col, k) => colTweens.push(G.fromTo(col, { y: 24 }, { y: speeds[k], ease: "none",
         scrollTrigger: { trigger: grid, start: "top bottom", end: "bottom top", scrub: true } })));
     }
@@ -230,7 +241,8 @@
   if (grid) {
     layoutCols();
     let w = innerWidth;
-    addEventListener("resize", () => { if ((w < 768) !== (innerWidth < 768) || (w < 901) !== (innerWidth < 901)) { w = innerWidth; layoutCols(); } });
+    const band = (x) => (x < 768 ? 0 : x < 901 ? 1 : x < 1200 ? 2 : 3);
+    addEventListener("resize", () => { if (band(w) !== band(innerWidth)) { w = innerWidth; layoutCols(); } });
     const tabs = $$(".reals__tabs button");
     const more = $("[data-reals-link]"), moreLabel = $("[data-reals-label]");
     tabs.forEach((btn) => btn.addEventListener("click", () => {
@@ -272,10 +284,11 @@
     const wrap = $("[data-hero-wrap]");
     if (wrap) {
       const tl = G.timeline({ defaults: { ease: "none" }, scrollTrigger: { trigger: wrap, start: "top top", end: "bottom bottom", scrub: 0.8 } });
+      const glOn = root.classList.contains("gl-on");   // the WebGL hero tilts the hide itself
       tl.to("[data-controls]", { opacity: 0, y: -30, duration: 0.1 }, 0.03)
         .to("[data-hero-foot]", { opacity: 0, y: 24, duration: 0.1 }, 0.03)
-        .to("[data-mono]", { scale: 0.46, yPercent: -62, duration: 0.24, ease: "power2.inOut" }, 0.04)
-        .to("[data-veil]", { opacity: 1, duration: 0.26 }, 0.06);
+        .to("[data-veil]", { opacity: glOn ? 0.62 : 1, duration: 0.26 }, 0.06);
+      if (!glOn) tl.to("[data-mono]", { scale: 0.46, yPercent: -62, duration: 0.24, ease: "power2.inOut" }, 0.04);
       $$(".band").forEach((band, k) => {
         const words = $$(".sw__in", band);
         const at = 0.16 + k * 0.25;
