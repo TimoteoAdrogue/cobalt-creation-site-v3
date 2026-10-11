@@ -12,6 +12,16 @@
   const root = document.documentElement;
   if (G) G.registerPlugin(window.ScrollTrigger);
   else root.classList.add("no-gsap", "no-story");
+
+  /* ---------- smooth scrolling (fine pointers only), on GSAP's clock so scrubbed scenes stay in step ---------- */
+  let lenis = null;
+  if (G && window.Lenis && fine) {
+    lenis = new window.Lenis({ lerp: 0.1, wheelMultiplier: 0.9 });
+    lenis.on("scroll", window.ScrollTrigger.update);
+    G.ticker.add((t) => lenis.raf(t * 1000));
+    G.ticker.lagSmoothing(0);
+  }
+  const hold = (on) => { if (lenis) on ? lenis.stop() : lenis.start(); };
   const safe = (w) => w.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const splitWords = (el) => {   // words stay readable by screen readers
     const words = el.textContent.trim().split(/\s+/);
@@ -31,6 +41,13 @@
     document.body.prepend(s);
     new IntersectionObserver(([e]) => tb.classList.toggle("is-solid", !e.isIntersecting && e.boundingClientRect.top < 0)).observe(s);
   }
+  // the bar steps aside while reading down and returns on the way up
+  if (tb && G) {
+    window.ScrollTrigger.create({ start: 0, end: "max", onUpdate: (st) => {
+      tb.classList.toggle("is-hidden", st.direction === 1 && st.scroll() > innerHeight * 0.8 && !root.style.overflow && !tb.contains(document.activeElement));
+    } });
+    tb.addEventListener("focusin", () => tb.classList.remove("is-hidden"));
+  }
 
   /* ---------- overlay menu ---------- */
   const mb = $(".tb__menu"), ov = $("[data-ov]");
@@ -40,6 +57,8 @@
       mb.setAttribute("aria-expanded", String(open));
       ov.classList.toggle("is-open", open);
       root.style.overflow = open ? "hidden" : "";
+      hold(open);
+      if (open) tb?.classList.remove("is-hidden");
       label.textContent = open ? "Fermer" : "Menu";
       if (open) setTimeout(() => $("a", ov)?.focus(), 80);
     };
@@ -194,20 +213,29 @@
 
   /* ---------- signature techniques: the image wipes in as the text arrives ---------- */
   const gestes = $$(".geste");
-  if (gestes.length && io) {
+  const gx = $("[data-gx]");
+  const countEl = $("[data-g-count]");
+  let onGeste = () => {};
+  if (gestes.length) {
     const figs = $$(".gestes__media figure");
     let cur = "0";
-    const on = (k) => {
+    onGeste = (k) => {
       if (k === cur) return;
       figs.forEach((f) => {
         f.classList.toggle("was-on", f.dataset.g === cur);
         f.classList.toggle("is-on", f.dataset.g === k);
       });
       gestes.forEach((g) => g.classList.toggle("is-on", g.dataset.g === k));
+      if (countEl) countEl.textContent = String(+k + 1).padStart(2, "0");
       cur = k;
     };
-    const o = new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting) on(e.target.dataset.g); }, { rootMargin: "-45% 0px -45% 0px" });
-    gestes.forEach((g) => o.observe(g));
+    if (io) {
+      const o = new IntersectionObserver((es) => {
+        if (gx?.classList.contains("is-pinned")) return;
+        for (const e of es) if (e.isIntersecting) onGeste(e.target.dataset.g);
+      }, { rootMargin: "-45% 0px -45% 0px" });
+      gestes.forEach((g) => o.observe(g));
+    }
   }
 
   /* ---------- réalisations: columns, filter in the heading ---------- */
@@ -265,14 +293,13 @@
   /* ---------- book: tilt toward the pointer ---------- */
   $$("[data-tilt]").forEach((el) => {
     if (reduce || !fine) return;
-    const img = $("img", el);
     el.addEventListener("pointermove", (e) => {
       const r = el.getBoundingClientRect();
       const px = (e.clientX - r.left) / r.width - 0.5, py = (e.clientY - r.top) / r.height - 0.5;
-      img.style.setProperty("--ry", (px * 14).toFixed(2));
-      img.style.setProperty("--rx", (-py * 9).toFixed(2));
+      el.style.setProperty("--ry", (px * 14).toFixed(2));
+      el.style.setProperty("--rx", (-py * 9).toFixed(2));
     });
-    el.addEventListener("pointerleave", () => { img.style.removeProperty("--ry"); img.style.removeProperty("--rx"); });
+    el.addEventListener("pointerleave", () => { el.style.removeProperty("--ry"); el.style.removeProperty("--rx"); });
   });
 
   /* ---------- scroll story (GSAP) ---------- */
@@ -300,27 +327,76 @@
     }
 
     const mm = G.matchMedia();
+    const line = $("[data-g-line]");
     mm.add("(min-width: 901px)", () => {
       // deep sections open to full width as they arrive
       $$("[data-open]").forEach((sec) => {
         G.fromTo(sec, { clipPath: "inset(6% 5% 0% 5%)" }, { clipPath: "inset(0% 0% 0% 0%)", ease: "none",
           scrollTrigger: { trigger: sec, start: "top bottom", end: "top 18%", scrub: true } });
       });
+
+      // signature techniques: the section holds still and becomes an index. Each technique opens its photograph
+      // from a slit; at the end the photograph widens over the whole screen and the page moves on.
+      if (gx && gestes.length) {
+        gx.classList.add("is-pinned");
+        const N = gestes.length, per = 0.38, tail = 0.85, share = (N * per) / (N * per + tail);
+        const media = $(".gestes__media", gx);
+        G.timeline({ scrollTrigger: { trigger: $(".gestes__body", gx), start: "top top", end: () => "+=" + innerHeight * (N * per + tail), pin: true, scrub: 0.5, invalidateOnRefresh: true,
+          onUpdate: (st) => onGeste(String(Math.min(N - 1, Math.floor((st.progress / share) * N)))) } })
+          .fromTo(line, { scaleY: 0 }, { scaleY: 1, ease: "none", duration: share }, 0)
+          .fromTo(media, { width: "50%" }, { width: "100%", ease: "power2.inOut", duration: 1 - share }, share)
+          .fromTo("[data-g-veil]", { opacity: 0 }, { opacity: 0.62, ease: "none", duration: 1 - share }, share);
+        return () => { gx.classList.remove("is-pinned"); onGeste("0"); };
+      }
+    });
+    mm.add("(max-width: 900px)", () => {
+      // the gold line follows the techniques
+      if (line) G.fromTo(line, { scaleY: 0 }, { scaleY: 1, ease: "none", scrollTrigger: { trigger: ".gestes__listwrap", start: "top 55%", end: "bottom 55%", scrub: true } });
     });
 
-    // the gold line follows the techniques
-    const line = $("[data-g-line]");
-    if (line) G.to(line, { scaleY: 1, ease: "none", scrollTrigger: { trigger: ".gestes__listwrap", start: "top 55%", end: "bottom 55%", scrub: true } });
-
-    // logo wall: a diagonal cascade, then the slow gold glint (CSS)
+    // logo wall: the marks come forward out of depth, scattered, and settle into the grid
     const wallItems = $$("[data-wall] li");
-    if (wallItems.length) G.from(wallItems, { opacity: 0, y: 26, scale: 0.9, duration: 0.9, ease: "power3.out",
-      stagger: { grid: [8, 7], from: "start", amount: 1.3 }, scrollTrigger: { trigger: "[data-wall]", start: "top 82%", once: true } });
+    if (wallItems.length) G.fromTo(wallItems, { z: () => -400 - Math.random() * 1400, y: () => (Math.random() - 0.5) * 120, opacity: 0 },
+      { z: 0, y: 0, opacity: 1, ease: "power2.out", stagger: { amount: 0.5, from: "random" },
+        scrollTrigger: { trigger: "[data-wall]", start: "top bottom", end: "center 58%", scrub: 0.8 } });
 
-    // the book turns toward the reader
+    // the book turns toward the reader while a gold light crosses its cover
     const book = $("[data-book3]");
     if (book) G.fromTo(book, { rotateY: -40, rotateX: 10, y: 80 }, { rotateY: -8, rotateX: 0, y: -30, ease: "none",
       scrollTrigger: { trigger: "[data-book3-sec]", start: "top bottom", end: "bottom top", scrub: true } });
+    const sheen = $("[data-sheen]");
+    if (sheen) G.fromTo(sheen, { backgroundPosition: "100% 0%" }, { backgroundPosition: "0% 0%", ease: "none",
+      scrollTrigger: { trigger: "[data-book3-sec]", start: "top 75%", end: "bottom 25%", scrub: true } });
+
+    // rubric intro: a gold light passes through the first paragraph
+    $$("[data-lightp]").forEach((pEl) => {
+      pEl.classList.add("is-lightable");
+      G.fromTo(pEl, { backgroundPosition: "100% 0%" }, { backgroundPosition: "0% 0%", ease: "none",
+        scrollTrigger: { trigger: pEl, start: "top 88%", end: "bottom 42%", scrub: true } });
+    });
+
+    // next rubric: a gold cut runs across, then opens like a slit onto the photograph
+    const nx = $("[data-nx]");
+    if (nx) {
+      const media = $("[data-nx-media]", nx), cuts = $$("[data-nx-line]", nx), img = $("img", media);
+      mm.add("(min-width: 901px)", () => {
+        G.timeline({ scrollTrigger: { trigger: nx, start: "top top", end: () => "+=" + innerHeight, pin: $(".next3", nx), scrub: 0.6, invalidateOnRefresh: true } })
+          .fromTo(cuts, { scaleX: 0 }, { scaleX: 1, duration: 0.28, ease: "power2.out" }, 0)
+          .fromTo(media, { clipPath: "inset(49.7% 0% 49.7% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", duration: 0.72, ease: "power3.inOut" }, 0.28)
+          .fromTo(cuts[0], { y: 0 }, { y: () => -innerHeight / 2, duration: 0.72, ease: "power3.inOut" }, 0.28)
+          .fromTo(cuts[1], { y: 0 }, { y: () => innerHeight / 2 - 1, duration: 0.72, ease: "power3.inOut" }, 0.28)
+          .fromTo(img, { scale: 1.3 }, { scale: 1, duration: 0.72, ease: "power3.inOut" }, 0.28)
+          .fromTo($(".next3__t", nx), { opacity: 0, y: 46 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, 0.62);
+      });
+      mm.add("(max-width: 900px)", () => {
+        G.fromTo(media, { clipPath: "inset(30% 0% 30% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", ease: "none", scrollTrigger: { trigger: nx, start: "top bottom", end: "top 20%", scrub: true } });
+      });
+    }
+
+    // the end panel: its call to contact rises out of the depth as the page lifts off it
+    const endEl = $("[data-end]"), endIn = $("[data-end-in]");
+    if (endEl && endIn) G.fromTo(endIn, { yPercent: -30, scale: 0.94 }, { yPercent: 0, scale: 1, ease: "none",
+      scrollTrigger: { trigger: "main", start: "bottom bottom", end: () => `bottom ${innerHeight - endEl.offsetHeight}px`, scrub: true, invalidateOnRefresh: true } });
 
     // rubric opening image: settles in, then drifts as the page moves on
     const rh = $("[data-rh]");
@@ -333,6 +409,14 @@
 
     addEventListener("load", () => { placeCells(); ST.refresh(); });
     document.fonts?.ready.then(() => ST.refresh());
+  }
+
+  /* ---------- end panel: revealed from under the page when it fits on screen ---------- */
+  const endPanel = $("[data-end]");
+  if (endPanel && !reduce) {
+    const fit = () => endPanel.classList.toggle("is-reveal", endPanel.offsetHeight < innerHeight * 0.92);
+    fit();
+    addEventListener("resize", fit);
   }
 
   /* ---------- viewer ---------- */
@@ -370,6 +454,7 @@
         if (!fromHistory) { history.pushState({ vw: true }, "", hashes ? `#piece-${data(a).n}` : location.href); pushed = true; }
         vw.showModal();
         root.style.overflow = "hidden";
+        hold(true);
       }
       show(items.indexOf(a));
       $(".vw__close", vw).focus();
@@ -378,6 +463,7 @@
       if (!vw.open) return;
       vw.close();
       root.style.overflow = "";
+      hold(false);
       if (!viaHistory && pushed) { pushed = false; history.back(); }
       else if (!viaHistory && hashes) history.replaceState(null, "", location.pathname + location.search);
       (items[cur] || opener)?.focus({ preventScroll: true });

@@ -24,6 +24,7 @@
 <script>document.documentElement.classList.add('js')</script>
 <script src="../assets/vendor/gsap.min.js" defer></script>
 <script src="../assets/vendor/ScrollTrigger.min.js" defer></script>
+<script src="../assets/vendor/lenis.min.js" defer></script>
 
 <script src="../assets/site.js" defer></script>
 </head>
@@ -36,7 +37,7 @@
     <button class="tb__menu" type="button" aria-expanded="false" aria-controls="ov"><span class="tb__bars" aria-hidden="true"></span><span data-menu-label>Menu</span></button>
   </div>
 </header>
-<nav class="ov" id="ov" aria-label="Navigation principale" data-ov>
+<nav class="ov" id="ov" aria-label="Navigation principale" data-ov data-lenis-prevent>
   <ul><li><a class="ov__link" href="../">Accueil</a></li><li><a class="ov__link" href="../creation-d-objet-unique/">Nos ateliers signatures</a></li><li><a class="ov__link" href="../ateliers-de-personnalisation/">Nos animations retail sur mesure</a></li><li><a class="ov__link" href="../design-graphique-design-papier/">Notre studio graphique &amp; design</a></li><li><a class="ov__link" href="../coffrets-packaging/">Notre atelier parisien</a></li><li><a class="ov__link" href="../contact-feedback/" aria-current="page">Contact</a></li></ul>
   <div class="ov__foot"><span>35, Boulevard Berthier - 75017 Paris</span><a href="tel:+33144098185">+33 (0) 1 44 09 81 85</a><a href="mailto:contact@cobaltcreation.com">contact@cobaltcreation.com</a><span>Horaires d’ouverture : 9h30 - 18h30</span></div>
 </nav>
@@ -77,8 +78,9 @@
   </div>
 </section>
 </main>
-<footer class="ft3">
+<footer class="ft3 end" data-end>
   <div class="wrap">
+    
     <div class="ft3__grid">
       <div>
         <img src="../assets/media/logo-cobalt-creme.png" width="653" height="337" alt="Cobalt Création" loading="lazy">
