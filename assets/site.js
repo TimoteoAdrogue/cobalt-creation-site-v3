@@ -350,6 +350,9 @@
       }
     });
     mm.add("(max-width: 900px)", () => {
+      // phones: each technique's photograph opens from a slit as it arrives
+      $$(".geste__img").forEach((m) => G.fromTo(m, { clipPath: "inset(32% 0% 32% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", ease: "none",
+        scrollTrigger: { trigger: m, start: "top bottom", end: "top 35%", scrub: true } }));
       // the gold line follows the techniques
       if (line) G.fromTo(line, { scaleY: 0 }, { scaleY: 1, ease: "none", scrollTrigger: { trigger: ".gestes__listwrap", start: "top 55%", end: "bottom 55%", scrub: true } });
     });
@@ -409,6 +412,48 @@
 
     addEventListener("load", () => { placeCells(); ST.refresh(); });
     document.fonts?.ready.then(() => ST.refresh());
+  }
+
+  /* ---------- page transition: a gold cut runs across and the page closes onto it; the next page opens (CSS) ---------- */
+  if (!reduce) {
+    document.addEventListener("click", (e) => {
+      const a = e.target.closest && e.target.closest("a[href]");
+      if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if ((a.target && a.target !== "_self") || a.hasAttribute("download")) return;
+      const url = new URL(a.href, location.href);
+      if (url.origin !== location.origin || !url.protocol.startsWith("http")) return;
+      if (url.pathname === location.pathname && url.search === location.search) return;   // same page: anchors, works
+      e.preventDefault();
+      try { sessionStorage.setItem("cc-pt", "1"); } catch (err) {}
+      const pt = document.createElement("div");
+      pt.className = "pt"; pt.setAttribute("aria-hidden", "true");
+      pt.innerHTML = '<i class="pt__lid"></i><i class="pt__cut"></i>';
+      document.body.appendChild(pt);
+      setTimeout(() => { location.href = url.href; }, 640);
+    });
+    // back/forward restores the page from memory with the page still closed
+    addEventListener("pageshow", (e) => { if (e.persisted) $$(".pt").forEach((x) => x.remove()); });
+  }
+
+  /* ---------- a label follows the pointer over the works (fine pointers) ---------- */
+  if (!reduce && fine) {
+    const tag = document.createElement("div");
+    tag.className = "cur"; tag.setAttribute("aria-hidden", "true"); tag.textContent = "Voir";
+    document.body.appendChild(tag);
+    root.classList.add("has-cur");
+    let x = 0, y = 0, tx = 0, ty = 0, on = false, raf = 0;
+    const loop = () => {
+      x += (tx - x) * 0.22; y += (ty - y) * 0.22;
+      tag.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
+      raf = on || Math.abs(tx - x) + Math.abs(ty - y) > 0.5 ? requestAnimationFrame(loop) : 0;
+    };
+    addEventListener("pointermove", (e) => {
+      tx = e.clientX; ty = e.clientY;
+      const hit = !!(e.target.closest && e.target.closest("[data-view]"));
+      if (hit && !on) { x = tx; y = ty; }
+      if (hit !== on) { on = hit; tag.classList.toggle("is-on", on); }
+      if (on && !raf) raf = requestAnimationFrame(loop);
+    }, { passive: true });
   }
 
   /* ---------- end panel: revealed from under the page when it fits on screen ---------- */
