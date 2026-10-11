@@ -13,10 +13,9 @@
   if (G) G.registerPlugin(window.ScrollTrigger);
   else root.classList.add("no-gsap", "no-story");
   const safe = (w) => w.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const splitWords = (el) => {
+  const splitWords = (el) => {   // words stay readable by screen readers
     const words = el.textContent.trim().split(/\s+/);
-    el.setAttribute("aria-label", el.textContent.trim());
-    el.innerHTML = words.map((w, i) => `<span class="sw" aria-hidden="true"><span class="sw__in" style="--w:${i}">${safe(w)}</span></span>`).join(" ");
+    el.innerHTML = words.map((w, i) => `<span class="sw"><span class="sw__in" style="--w:${i}">${safe(w)}</span></span>`).join(" ");
   };
 
   /* ---------- split headings + the hero sentences ---------- */
