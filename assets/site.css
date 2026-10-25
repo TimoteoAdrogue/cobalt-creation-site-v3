@@ -28,7 +28,9 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; scroll-padding-top: 88px; background: var(--ground); }
-.tex, body, main, .sec--deep, .ft3, .next3 { background-image: url("media/leather-soft.jpg"); background-size: 420px 420px; background-blend-mode: soft-light; }
+.tex, body, main, .ft3 { background-image: url("media/leather-soft.jpg"); background-size: 420px 420px; background-blend-mode: soft-light; }
+/* one hide for the whole page: sections carry no ground of their own, so no edge can show between them
+   (the script lets main's colour flow from ink to deep ink as the scenes change) */
 main { position: relative; z-index: 1; background-color: var(--ground); }
 html.lenis, html.lenis body { height: auto; }
 .lenis.lenis-smooth { scroll-behavior: auto !important; }
@@ -108,7 +110,9 @@ button { font: inherit; color: inherit; }
 
 /* ---------- HERO: the live monogram, pinned while the agency speaks ---------- */
 .hero-wrap { position: relative; height: 320vh; }
-.hero { position: sticky; top: 0; height: 100vh; height: 100dvh; min-height: 600px; display: grid; grid-template-rows: 1fr auto; overflow: hidden; isolation: isolate; background: var(--ground); }
+.hero { position: sticky; top: 0; height: 100vh; height: 100dvh; min-height: 600px; display: grid; grid-template-rows: 1fr auto; overflow: hidden; isolation: isolate; background: var(--ground);
+  /* at the end of the story its lower half dissolves into the page's ground (--fade, set by the script): no edge as it leaves */
+  -webkit-mask-image: linear-gradient(#000 calc(100% - var(--fade, 0) * 55vh), transparent); mask-image: linear-gradient(#000 calc(100% - var(--fade, 0) * 55vh), transparent); }
 .hero__leather {
   position: absolute; inset: 0; z-index: -3;
   background-color: var(--ground);
@@ -195,7 +199,6 @@ button { font: inherit; color: inherit; }
 
 /* ---------- section rhythm ---------- */
 .sec { padding-block: clamp(88px, 11vw, 168px); }
-.sec--deep { background-color: var(--deep); }
 .sec__head { display: grid; gap: 22px; margin-bottom: clamp(48px, 6vw, 88px); max-width: 860px; }
 
 /* ---------- gestes: pinned index ---------- */
@@ -221,7 +224,11 @@ button { font: inherit; color: inherit; }
 .gestes__veil { position: absolute; inset: 0; z-index: 5; background: var(--deeper); opacity: 0; pointer-events: none; }
 .gestes__count { display: none; }
 /* wide screens: the section holds still and becomes an index; the photograph opens from a slit */
-.gestes.is-pinned .gestes__body { position: relative; display: block; height: 100vh; height: 100dvh; min-height: 640px; }
+.gestes.is-pinned .gestes__body { position: relative; display: block; height: 100vh; height: 100dvh; min-height: 640px;
+  /* the exit: a soft edge rises through the photograph faster than it scrolls (--roll 0 → 1, set by the script);
+     the bottom is clear from the first pixel, so its edge never shows */
+  -webkit-mask-image: linear-gradient(#000 calc(100% - var(--roll, 0) * 200%), transparent calc(100% - var(--roll, 0) * 100%));
+  mask-image: linear-gradient(#000 calc(100% - var(--roll, 0) * 200%), transparent calc(100% - var(--roll, 0) * 100%)); }
 /* explicit height: align-self: start (from the sticky layout) also stops an absolute box from stretching */
 .gestes.is-pinned .gestes__media { position: absolute; left: 0; top: 0; width: 50%; height: 100%; align-self: stretch; z-index: 2; }
 .gestes.is-pinned .gestes__listwrap { position: absolute; left: 50%; right: 0; top: 0; bottom: 0; display: flex; align-items: center; padding: 76px var(--gut) 0 clamp(56px, 6vw, 112px); }
@@ -524,7 +531,7 @@ button.link { border: 0; cursor: pointer; background-color: transparent; }
 }
 
 /* ---------- next rubric ---------- */
-.next3 { position: relative; display: grid; place-items: center; align-content: center; gap: 18px; height: 100vh; height: 100dvh; min-height: 520px; overflow: hidden; color: var(--cream); text-decoration: none; text-align: center; background-color: var(--deeper); }
+.next3 { position: relative; display: grid; place-items: center; align-content: center; gap: 18px; height: 100vh; height: 100dvh; min-height: 520px; overflow: hidden; color: var(--cream); text-decoration: none; text-align: center; }   /* no ground of its own: the page's, deepening toward the end, shows through */
 .next3__media { position: absolute; inset: 0; overflow: hidden; will-change: clip-path; }
 .next3__img { width: 100%; height: 100%; object-fit: cover; opacity: .46; transition: opacity 1s var(--settle); }
 .next3:hover .next3__img { opacity: .62; }

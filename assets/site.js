@@ -323,29 +323,27 @@
           .to(words, { yPercent: -110, opacity: 0, stagger: 0.002, duration: 0.05, ease: "power2.in" }, at + 0.2)
           .set(band, { opacity: 0 }, at + 0.25);
       });
-      tl.to({}, { duration: 0.02 }, 0.98);
+      // the hide's lower half dissolves into the page's ground, so nothing marks where the hero ends
+      tl.fromTo(".hero", { "--fade": 0 }, { "--fade": 1, duration: 0.14 }, 0.86);
     }
 
     const mm = G.matchMedia();
     const line = $("[data-g-line]");
     mm.add("(min-width: 901px)", () => {
-      // deep sections open to full width as they arrive
-      $$("[data-open]").forEach((sec) => {
-        G.fromTo(sec, { clipPath: "inset(6% 5% 0% 5%)" }, { clipPath: "inset(0% 0% 0% 0%)", ease: "none",
-          scrollTrigger: { trigger: sec, start: "top bottom", end: "top 18%", scrub: true } });
-      });
-
       // signature techniques: the section holds still and becomes an index. Each technique opens its photograph
-      // from a slit; at the end the photograph widens over the whole screen and the page moves on.
+      // from a slit; at the end the photograph widens over the whole screen, and as the page moves on it dissolves
+      // from the bottom up into the bare ground (during the exit, so no empty screen and no edge follow).
       if (gx && gestes.length) {
         gx.classList.add("is-pinned");
         const N = gestes.length, per = 0.38, tail = 0.85, share = (N * per) / (N * per + tail);
-        const media = $(".gestes__media", gx);
-        G.timeline({ scrollTrigger: { trigger: $(".gestes__body", gx), start: "top top", end: () => "+=" + innerHeight * (N * per + tail), pin: true, scrub: 0.5, invalidateOnRefresh: true,
+        const media = $(".gestes__media", gx), body = $(".gestes__body", gx);
+        const pinned = G.timeline({ scrollTrigger: { trigger: body, start: "top top", end: () => "+=" + innerHeight * (N * per + tail), pin: true, scrub: 0.5, invalidateOnRefresh: true,
           onUpdate: (st) => onGeste(String(Math.min(N - 1, Math.floor((st.progress / share) * N)))) } })
           .fromTo(line, { scaleY: 0 }, { scaleY: 1, ease: "none", duration: share }, 0)
           .fromTo(media, { width: "50%" }, { width: "100%", ease: "power2.inOut", duration: 1 - share }, share)
           .fromTo("[data-g-veil]", { opacity: 0 }, { opacity: 0.62, ease: "none", duration: 1 - share }, share);
+        G.fromTo(body, { "--roll": 0 }, { "--roll": 1, ease: "none", scrollTrigger: { trigger: body,
+          start: () => pinned.scrollTrigger.end, end: () => pinned.scrollTrigger.end + innerHeight * 0.8, scrub: 0.5, invalidateOnRefresh: true } });
         return () => { gx.classList.remove("is-pinned"); onGeste("0"); };
       }
     });
@@ -408,6 +406,45 @@
       G.fromTo(img, { scale: 1.1, opacity: 0.4 }, { scale: 1, opacity: 1, duration: 2.2, ease: "power3.out" });
       G.to(img, { yPercent: 12, ease: "none", scrollTrigger: { trigger: rh, start: "top top", end: "bottom top", scrub: true } });
       G.to($(".rh__title", rh), { yPercent: -60, opacity: 0.15, ease: "none", scrollTrigger: { trigger: rh, start: "top top", end: "bottom top", scrub: true } });
+    }
+
+    // scenes: main's ground flows from ink to deep ink as the sections take over (they have no ground of their own,
+    // so no edge ever shows), each section rises in a little behind the scroll and recedes as the next one arrives,
+    // and the ground deepens to the end panel's colour before the page lifts off it
+    const mainEl = $("main");
+    if (mainEl) {
+      const RGB = { ground: [2, 55, 79], deep: [1, 38, 56], deeper: [1, 28, 42] };
+      const scenes = $$("main > section").map((el) => ({ el, tone: el.classList.contains("sec--deep") ? RGB.deep : RGB.ground, moves: el.classList.contains("sec") }));
+      const hasEnd = !!$("[data-end]");
+      const mix = (a, b, k) => a.map((v, j) => v + (b[j] - v) * k);
+      const clamp = (v) => Math.min(1, Math.max(0, v));
+      let geo = [], mainEnd = 0, col = "";
+      // positions are measured with the scene transforms removed, after ScrollTrigger has placed its pins
+      ST.addEventListener("refreshInit", () => scenes.forEach((s) => { s.el.style.transform = s.el.style.opacity = ""; s.t = s.o = ""; }));
+      const measure = () => {
+        const y = scrollY;
+        geo = scenes.map((s) => { const r = s.el.getBoundingClientRect(); return [r.top + y, r.bottom + y]; });
+        mainEnd = mainEl.getBoundingClientRect().bottom + y;
+      };
+      const paint = () => {
+        const vh = innerHeight, y = scrollY;
+        let c = scenes[0]?.tone || RGB.ground;
+        scenes.forEach((s, i) => {
+          const top = geo[i][0] - y, bottom = geo[i][1] - y;
+          if (i) c = mix(c, s.tone, clamp((vh * 0.85 - top) / (vh * 0.55)));
+          if (!s.moves || s.el.classList.contains("is-pinned")) return;   // a pinned section must keep no transform
+          const enter = clamp((vh - top) / (vh * 0.7)), leave = clamp((vh * 0.55 - bottom) / (vh * 0.55));
+          const t = `translate3d(0,${((1 - enter - leave) * vh * 0.09).toFixed(1)}px,0)`, o = (1 - leave * 0.7).toFixed(3);
+          if (s.t !== t) { s.el.style.transform = s.t = t; }
+          if (s.o !== o) { s.el.style.opacity = s.o = o; }
+        });
+        if (hasEnd) c = mix(c, RGB.deeper, clamp((vh * 1.5 - (mainEnd - y)) / (vh * 0.5)));
+        const css = `rgb(${c.map(Math.round).join(",")})`;
+        if (css !== col) { mainEl.style.backgroundColor = col = css; }
+      };
+      ST.addEventListener("refresh", () => { measure(); paint(); });
+      addEventListener("scroll", paint, { passive: true });
+      measure(); paint();
     }
 
     addEventListener("load", () => { placeCells(); ST.refresh(); });
