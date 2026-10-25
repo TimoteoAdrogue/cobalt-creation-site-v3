@@ -342,6 +342,7 @@
           .fromTo(line, { scaleY: 0 }, { scaleY: 1, ease: "none", duration: share }, 0)
           .fromTo(media, { width: "50%" }, { width: "100%", ease: "power2.inOut", duration: 1 - share }, share)
           .fromTo("[data-g-veil]", { opacity: 0 }, { opacity: 0.62, ease: "none", duration: 1 - share }, share);
+        G.fromTo(body, { "--f": 1 }, { "--f": 0, ease: "none", scrollTrigger: { trigger: body, start: "top bottom", end: "top top", scrub: true } });
         G.fromTo(body, { "--roll": 0 }, { "--roll": 1, ease: "none", scrollTrigger: { trigger: body,
           start: () => pinned.scrollTrigger.end, end: () => pinned.scrollTrigger.end + innerHeight * 0.8, scrub: 0.5, invalidateOnRefresh: true } });
         return () => { gx.classList.remove("is-pinned"); onGeste("0"); };
@@ -396,8 +397,10 @@
 
     // the end panel: its call to contact rises out of the depth as the page lifts off it
     const endEl = $("[data-end]"), endIn = $("[data-end-in]");
-    if (endEl && endIn) G.fromTo(endIn, { yPercent: -30, scale: 0.94 }, { yPercent: 0, scale: 1, ease: "none",
-      scrollTrigger: { trigger: "main", start: "bottom bottom", end: () => `bottom ${innerHeight - endEl.offsetHeight}px`, scrub: true, invalidateOnRefresh: true } });
+    const lift = { trigger: "main", start: "bottom bottom", end: () => `bottom ${innerHeight - endEl.offsetHeight}px`, scrub: true, invalidateOnRefresh: true };
+    if (endEl && endIn) G.fromTo(endIn, { yPercent: -30, scale: 0.94 }, { yPercent: 0, scale: 1, ease: "none", scrollTrigger: lift });
+    // the photograph that closes a rubric dissolves from the bottom as the page lifts off, so no edge crosses the end panel
+    if (endEl && $(".next3")) G.fromTo(".next3", { "--lift": 0 }, { "--lift": 1, ease: "none", scrollTrigger: { ...lift } });
 
     // rubric opening image: settles in, then drifts as the page moves on
     const rh = $("[data-rh]");

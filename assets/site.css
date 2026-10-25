@@ -225,10 +225,10 @@ button { font: inherit; color: inherit; }
 .gestes__count { display: none; }
 /* wide screens: the section holds still and becomes an index; the photograph opens from a slit */
 .gestes.is-pinned .gestes__body { position: relative; display: block; height: 100vh; height: 100dvh; min-height: 640px;
-  /* the exit: a soft edge rises through the photograph faster than it scrolls (--roll 0 → 1, set by the script);
-     the bottom is clear from the first pixel, so its edge never shows */
-  -webkit-mask-image: linear-gradient(#000 calc(100% - var(--roll, 0) * 200%), transparent calc(100% - var(--roll, 0) * 100%));
-  mask-image: linear-gradient(#000 calc(100% - var(--roll, 0) * 200%), transparent calc(100% - var(--roll, 0) * 100%)); }
+  /* soft edges, set by the script: on arrival the top dissolves in (--f 1 → 0); on exit a soft edge rises through the
+     photograph faster than it scrolls (--roll 0 → 1), its bottom clear from the first pixel, so no edge ever shows */
+  -webkit-mask-image: linear-gradient(transparent, #000 calc(var(--f, 0) * 75vh), #000 calc(100% - var(--roll, 0) * 200%), transparent calc(100% - var(--roll, 0) * 100%));
+  mask-image: linear-gradient(transparent, #000 calc(var(--f, 0) * 75vh), #000 calc(100% - var(--roll, 0) * 200%), transparent calc(100% - var(--roll, 0) * 100%)); }
 /* explicit height: align-self: start (from the sticky layout) also stops an absolute box from stretching */
 .gestes.is-pinned .gestes__media { position: absolute; left: 0; top: 0; width: 50%; height: 100%; align-self: stretch; z-index: 2; }
 .gestes.is-pinned .gestes__listwrap { position: absolute; left: 50%; right: 0; top: 0; bottom: 0; display: flex; align-items: center; padding: 76px var(--gut) 0 clamp(56px, 6vw, 112px); }
@@ -533,6 +533,8 @@ button.link { border: 0; cursor: pointer; background-color: transparent; }
 /* ---------- next rubric ---------- */
 .next3 { position: relative; display: grid; place-items: center; align-content: center; gap: 18px; height: 100vh; height: 100dvh; min-height: 520px; overflow: hidden; color: var(--cream); text-decoration: none; text-align: center; }   /* no ground of its own: the page's, deepening toward the end, shows through */
 .next3__media { position: absolute; inset: 0; overflow: hidden; will-change: clip-path; }
+/* as the page lifts off the end panel, the bottom dissolves (--lift 0 → 1, set by the script; clear from the first pixel) */
+.next3 { -webkit-mask-image: linear-gradient(#000 calc(100% - var(--lift, 0) * 85vh), transparent 100%); mask-image: linear-gradient(#000 calc(100% - var(--lift, 0) * 85vh), transparent 100%); }
 .next3__img { width: 100%; height: 100%; object-fit: cover; opacity: .46; transition: opacity 1s var(--settle); }
 .next3:hover .next3__img { opacity: .62; }
 .next3:focus-visible { outline-offset: -12px; }
