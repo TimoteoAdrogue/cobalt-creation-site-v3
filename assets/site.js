@@ -42,8 +42,11 @@
     new IntersectionObserver(([e]) => tb.classList.toggle("is-solid", !e.isIntersecting && e.boundingClientRect.top < 0)).observe(s);
   }
   // the bar steps aside while reading down and returns on the way up
+  let refreshing = false;
+  if (G) { window.ScrollTrigger.addEventListener("refreshInit", () => { refreshing = true; }); window.ScrollTrigger.addEventListener("refresh", () => { requestAnimationFrame(() => { refreshing = false; }); }); }
   if (tb && G) {
     window.ScrollTrigger.create({ start: 0, end: "max", onUpdate: (st) => {
+      if (refreshing) return;
       tb.classList.toggle("is-hidden", st.direction === 1 && st.scroll() > innerHeight * 0.8 && !root.style.overflow && !tb.contains(document.activeElement));
     } });
     tb.addEventListener("focusin", () => tb.classList.remove("is-hidden"));
@@ -68,24 +71,7 @@
 
   /* ---------- reveals: settle-in, split headings, crew, contact-sheet cells ---------- */
   $$("[data-crew] li, [data-crew] h3").forEach((el, i) => el.style.setProperty("--i", i % 14));
-  const sheet = $(".sheet__grid");
-  const cells = $$(".cs");
-  const placeCells = () => {
-    if (!sheet) return;
-    const cols = getComputedStyle(sheet).gridTemplateColumns.split(" ").length || 1;
-    cells.forEach((c, i) => { c.style.setProperty("--c", i % cols); c.classList.remove("is-wide"); c.style.gridColumn = ""; });
-    // no empty cells: the last photograph stretches across what remains of its row
-    const rem = cells.length % cols;
-    if (rem && cols > 1) {
-      const last = cells[cells.length - 1];
-      const cellW = cells[0].getBoundingClientRect().width;
-      last.classList.add("is-wide"); last.style.gridColumn = `span ${cols - rem + 1}`;
-      last.style.setProperty("--h", cellW + "px");
-    }
-  };
-  addEventListener("resize", placeCells, { passive: true });
-  placeCells();
-  const revealEls = $$("[data-settle], .split, [data-crew], .cs");
+  const revealEls = $$("[data-settle], .split, [data-crew], .rl");
   if (io && !reduce) {
     const o = new IntersectionObserver((es) => {
       for (const e of es) if (e.isIntersecting || e.boundingClientRect.top <= 0) { e.target.classList.add("is-in"); o.unobserve(e.target); }
@@ -95,9 +81,15 @@
     const sweep = setInterval(() => {
       const left = revealEls.filter((el) => !el.classList.contains("is-in"));
       if (!left.length) return clearInterval(sweep);
-      left.forEach((el) => { if (el.getBoundingClientRect().top < innerHeight) { el.classList.add("is-in"); o.unobserve(el); } });
+      left.forEach((el) => { if (!el.closest("[hidden]") && el.getBoundingClientRect().top < innerHeight) { el.classList.add("is-in"); o.unobserve(el); } });
     }, 500);
   } else revealEls.forEach((el) => el.classList.add("is-in"));
+
+  const boardEl = $("[data-board]");
+  if (boardEl) {
+    if (io) new IntersectionObserver(([e], o) => { if (e.isIntersecting) { boardEl.classList.add("is-near"); o.disconnect(); } }, { rootMargin: "150% 0px" }).observe(boardEl);
+    else boardEl.classList.add("is-near");
+  }
 
   /* ---------- the live monogram (vector SVG: sharp at any size) ---------- */
   const mono = $("[data-mono]");
@@ -144,31 +136,36 @@
       };
       setTimeout(() => requestAnimationFrame(step), 550);
     };
-    const stamp = () => {
+    const stamp = (soft = false) => {
       if (reduce) return;
-      mono.dispatchEvent(new CustomEvent("mono:stamp"));
+      mono.dispatchEvent(new CustomEvent("mono:stamp", { detail: { soft } }));
+      mono.classList.toggle("is-typing", soft);
       mono.classList.remove("is-stamp");
       void mono.getBoundingClientRect();
       mono.classList.add("is-stamp");
       sweep();
     };
     const clean = (v) => v.normalize("NFC").replace(/[^\p{L}]/gu, "").toUpperCase().slice(0, 3);
+    const slots = $$("[data-slots] i");
+    const fill = (n) => slots.forEach((s, i) => { s.classList.toggle("is-full", i < n); s.classList.toggle("is-next", i === Math.min(n, 2) && n < 3); });
     let last = DEFAULT;
     render(DEFAULT);
+    fill(0);
     setSheen(34);
     input.addEventListener("input", () => {
       const v = clean(input.value);
       if (input.value !== v) input.value = v;
       const show = v || DEFAULT;
+      fill(v.length);
       mono.classList.toggle("is-ghost", !v);
-      if (show !== last) { render(show); last = show; stamp(); }
+      if (show !== last) { render(show); last = show; stamp(true); }
     });
     $$(".finish button").forEach((btn) => btn.addEventListener("click", () => {
       $$(".finish button").forEach((x) => x.setAttribute("aria-pressed", String(x === btn)));
       mono.dataset.finish = btn.dataset.finish;
       stamp();
     }));
-    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(stamp, 120));
+    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => stamp(), 120));
 
     // light follows a fine pointer, or sweeps slowly on its own, only while the hero is on screen
     if (!reduce && light) {
@@ -214,7 +211,7 @@
   /* ---------- signature techniques: the image wipes in as the text arrives ---------- */
   const gestes = $$(".geste");
   const gx = $("[data-gx]");
-  const countEl = $("[data-g-count]");
+  const countEl = $("[data-g-count]"), descEl = $("[data-g-desc]");
   let onGeste = () => {};
   if (gestes.length) {
     const figs = $$(".gestes__media figure");
@@ -227,6 +224,11 @@
       });
       gestes.forEach((g) => g.classList.toggle("is-on", g.dataset.g === k));
       if (countEl) countEl.textContent = String(+k + 1).padStart(2, "0");
+      if (descEl) {
+        const t = $(`.geste[data-g="${k}"] p`)?.textContent || "";
+        descEl.classList.add("is-swap");
+        clearTimeout(onGeste.t); onGeste.t = setTimeout(() => { descEl.textContent = t; descEl.classList.remove("is-swap"); }, 180);
+      }
       cur = k;
     };
     if (io) {
@@ -238,57 +240,40 @@
     }
   }
 
-  /* ---------- réalisations: columns, filter in the heading ---------- */
+  /* ---------- réalisations: one run per rubric, filter in the heading ---------- */
   const grid = $("[data-reals]");
-  let colTweens = [];
-  const layoutCols = () => {
-    if (!grid) return;
-    const figs = $$(".rl", grid);
-    const n = innerWidth < 768 ? 2 : innerWidth < 1200 ? 3 : 4;
-    const cols = Array.from({ length: n }, () => { const d = document.createElement("div"); d.className = "reals__col"; return d; });
-    const hgt = new Array(n).fill(0);
-    figs.forEach((f) => {
-      if (f.hidden) { cols[0].appendChild(f); return; }
-      const img = $("img", f);
-      const r = img ? (+img.getAttribute("height") / +img.getAttribute("width")) || 1 : 1;
-      const k = hgt.indexOf(Math.min(...hgt));
-      cols[k].appendChild(f); hgt[k] += r + 0.25;
-    });
-    grid.replaceChildren(...cols);
-    grid.classList.add("is-cols");
-    colTweens.forEach((t) => t.scrollTrigger?.kill() || t.kill());
-    colTweens = [];
-    if (G && innerWidth >= 901) {
-      const speeds = [-20, -80, -40, -100];
-      cols.forEach((col, k) => colTweens.push(G.fromTo(col, { y: 24 }, { y: speeds[k], ease: "none",
-        scrollTrigger: { trigger: grid, start: "top bottom", end: "bottom top", scrub: true } })));
-    }
-    window.ScrollTrigger?.refresh();
-  };
   if (grid) {
-    layoutCols();
-    let w = innerWidth;
-    const band = (x) => (x < 768 ? 0 : x < 901 ? 1 : x < 1200 ? 2 : 3);
-    addEventListener("resize", () => { if (band(w) !== band(innerWidth)) { w = innerWidth; layoutCols(); } });
     const tabs = $$(".reals__tabs button");
     const more = $("[data-reals-link]"), moreLabel = $("[data-reals-label]");
-    tabs.forEach((btn) => btn.addEventListener("click", () => {
-      if (btn.getAttribute("aria-pressed") === "true") return;
-      tabs.forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
-      const f = btn.dataset.f;
-      const swap = () => {
-        $$(".rl", grid).forEach((fig) => { fig.hidden = fig.dataset.p !== f; });
+    const imgsOf = (f) => $$(`.rl[data-p="${f}"] img`, grid);
+    const warm = (f) => imgsOf(f).forEach((i) => { i.loading = "eager"; });   // on intent: hover or focus of a tab
+    tabs.forEach((btn) => {
+      btn.addEventListener("pointerenter", () => warm(btn.dataset.f), { passive: true });
+      btn.addEventListener("focus", () => warm(btn.dataset.f));
+      btn.addEventListener("click", async () => {
+        if (btn.getAttribute("aria-pressed") === "true") return;
+        tabs.forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+        const f = btn.dataset.f;
+        warm(f);
+        const ready = Promise.race([Promise.all(imgsOf(f).slice(0, 4).map((i) => i.decode().catch(() => {}))), new Promise((r) => setTimeout(r, 700))]);
+        if (!reduce) { grid.classList.add("is-out"); await Promise.all([ready, new Promise((r) => setTimeout(r, 340))]); }
+        $$(".rl", grid).forEach((fig) => { fig.hidden = fig.dataset.p !== f; fig.classList.remove("is-in"); });
         more.href = f + "/";
         moreLabel.textContent = btn.textContent;
-        layoutCols();
         grid.classList.remove("is-out");
-        if (G) G.from($$(".rl:not([hidden])", grid), { y: 70, opacity: 0, scale: 0.96, duration: 1.1, ease: "power3.out", stagger: 0.05, clearProps: "opacity,transform" });
-      };
-      if (reduce) return swap();
-      grid.classList.add("is-out");
-      setTimeout(swap, 320);
-    }));
+        requestAnimationFrame(() => $$(".rl:not([hidden])", grid).forEach((fig, k) => setTimeout(() => fig.classList.add("is-in"), 60 + k * 70)));
+        window.ScrollTrigger?.refresh();
+      });
+    });
   }
+  // the lamp: a warm light follows the pointer over each photograph
+  if (fine && !reduce) document.addEventListener("pointermove", (e) => {
+    const a = e.target.closest && e.target.closest(".rl > a");
+    if (!a) return;
+    const r = a.getBoundingClientRect();
+    a.style.setProperty("--mx", ((e.clientX - r.left) / r.width * 100).toFixed(1) + "%");
+    a.style.setProperty("--my", ((e.clientY - r.top) / r.height * 100).toFixed(1) + "%");
+  }, { passive: true });
 
   /* ---------- book: tilt toward the pointer ---------- */
   $$("[data-tilt]").forEach((el) => {
@@ -313,52 +298,48 @@
       const glOn = root.classList.contains("gl-on");   // the WebGL hero tilts the hide itself
       tl.to("[data-controls]", { opacity: 0, y: -30, duration: 0.1 }, 0.03)
         .to("[data-hero-foot]", { opacity: 0, y: 24, duration: 0.1 }, 0.03)
-        .to("[data-veil]", { opacity: glOn ? 0.62 : 1, duration: 0.26 }, 0.06);
+        .to("[data-veil]", { opacity: glOn ? 0.28 : 0.7, duration: 0.26 }, 0.06);   // the hide stays lit
       if (!glOn) tl.to("[data-mono]", { scale: 0.46, yPercent: -62, duration: 0.24, ease: "power2.inOut" }, 0.04);
       $$(".band").forEach((band, k) => {
         const words = $$(".sw__in", band);
-        const at = 0.16 + k * 0.25;
+        const at = 0.12 + k * 0.24;
         tl.set(band, { opacity: 1 }, at - 0.001)
           .fromTo(words, { yPercent: 110, opacity: 0 }, { yPercent: 0, opacity: 1, stagger: 0.0045, duration: 0.08, ease: "power3.out" }, at)
           .to(words, { yPercent: -110, opacity: 0, stagger: 0.002, duration: 0.05, ease: "power2.in" }, at + 0.2)
           .set(band, { opacity: 0 }, at + 0.25);
       });
       // the hide's lower half dissolves into the page's ground, so nothing marks where the hero ends
-      tl.fromTo(".hero", { "--fade": 0 }, { "--fade": 1, duration: 0.14 }, 0.86);
+      tl.fromTo(".hero", { "--fade": 0 }, { "--fade": 1, duration: 0.16 }, 0.82);
     }
 
     const mm = G.matchMedia();
-    const line = $("[data-g-line]");
     mm.add("(min-width: 901px)", () => {
       // signature techniques: the section holds still and becomes an index. Each technique opens its photograph
-      // from a slit; at the end the photograph widens over the whole screen, and as the page moves on it dissolves
-      // from the bottom up into the bare ground (during the exit, so no empty screen and no edge follow).
+      // from the slit; at the end the photograph widens over the whole screen, and as the page moves on it dissolves
+      // from the bottom up while the works are already rising underneath (the exit overlaps the next entrance).
       if (gx && gestes.length) {
         gx.classList.add("is-pinned");
-        const N = gestes.length, per = 0.38, tail = 0.85, share = (N * per) / (N * per + tail);
+        const N = gestes.length, per = 0.3, tail = 0.7, share = (N * per) / (N * per + tail);
         const media = $(".gestes__media", gx), body = $(".gestes__body", gx);
         const pinned = G.timeline({ scrollTrigger: { trigger: body, start: "top top", end: () => "+=" + innerHeight * (N * per + tail), pin: true, scrub: 0.5, invalidateOnRefresh: true,
           onUpdate: (st) => onGeste(String(Math.min(N - 1, Math.floor((st.progress / share) * N)))) } })
-          .fromTo(line, { scaleY: 0 }, { scaleY: 1, ease: "none", duration: share }, 0)
-          .fromTo(media, { width: "50%" }, { width: "100%", ease: "power2.inOut", duration: 1 - share }, share)
-          .fromTo("[data-g-veil]", { opacity: 0 }, { opacity: 0.62, ease: "none", duration: 1 - share }, share);
+          .fromTo(media, { width: "62%" }, { width: "100%", ease: "power2.inOut", duration: 1 - share }, share)
+          .fromTo(".gestes__listwrap", { "--lw": 1 }, { "--lw": 0, ease: "power1.in", duration: (1 - share) * 0.6 }, share)   // a variable, not an inline opacity left at 0
+          .fromTo("[data-g-veil]", { opacity: 0 }, { opacity: 0.5, ease: "none", duration: 1 - share }, share);
         G.fromTo(body, { "--f": 1 }, { "--f": 0, ease: "none", scrollTrigger: { trigger: body, start: "top bottom", end: "top top", scrub: true } });
         G.fromTo(body, { "--roll": 0 }, { "--roll": 1, ease: "none", scrollTrigger: { trigger: body,
           start: () => pinned.scrollTrigger.end, end: () => pinned.scrollTrigger.end + innerHeight * 0.8, scrub: 0.5, invalidateOnRefresh: true } });
         return () => { gx.classList.remove("is-pinned"); onGeste("0"); };
       }
     });
-    mm.add("(max-width: 900px)", () => {
-      // phones: each technique's photograph opens from a slit as it arrives
-      $$(".geste__img").forEach((m) => G.fromTo(m, { clipPath: "inset(32% 0% 32% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", ease: "none",
-        scrollTrigger: { trigger: m, start: "top bottom", end: "top 35%", scrub: true } }));
-      // the gold line follows the techniques
-      if (line) G.fromTo(line, { scaleY: 0 }, { scaleY: 1, ease: "none", scrollTrigger: { trigger: ".gestes__listwrap", start: "top 55%", end: "bottom 55%", scrub: true } });
-    });
 
+    // the gold board: the light comes up on the leaf as it arrives (brightness, never a mix of gold and ink)
+    const board = $("[data-board]");
+    if (board) G.fromTo(board, { "--lit": 0.22 }, { "--lit": 1, ease: "power1.out", scrollTrigger: { trigger: board, start: "top 95%", end: "center 55%", scrub: true } });
     // logo wall: the marks come forward out of depth, scattered, and settle into the grid
     const wallItems = $$("[data-wall] li");
-    if (wallItems.length) G.fromTo(wallItems, { z: () => -400 - Math.random() * 1400, y: () => (Math.random() - 0.5) * 120, opacity: 0 },
+    const deep = innerWidth > 900;   // no z-depth on phones: it reads poorly at 390 px
+    if (wallItems.length) G.fromTo(wallItems, { z: () => deep ? -400 - Math.random() * 1400 : 0, y: () => (Math.random() - 0.5) * (deep ? 120 : 60), opacity: 0 },
       { z: 0, y: 0, opacity: 1, ease: "power2.out", stagger: { amount: 0.5, from: "random" },
         scrollTrigger: { trigger: "[data-wall]", start: "top bottom", end: "center 58%", scrub: 0.8 } });
 
@@ -377,38 +358,26 @@
         scrollTrigger: { trigger: pEl, start: "top 88%", end: "bottom 42%", scrub: true } });
     });
 
-    // next rubric: a gold cut runs across, then opens like a slit onto the photograph
+    // next rubric: the next page's opening frame, opening from an 18 % band as the panel rises (title set from the first pixel)
     const nx = $("[data-nx]");
     if (nx) {
-      const media = $("[data-nx-media]", nx), cuts = $$("[data-nx-line]", nx), img = $("img", media);
-      mm.add("(min-width: 901px)", () => {
-        G.timeline({ scrollTrigger: { trigger: nx, start: "top top", end: () => "+=" + innerHeight, pin: $(".next3", nx), scrub: 0.6, invalidateOnRefresh: true } })
-          .fromTo(cuts, { scaleX: 0 }, { scaleX: 1, duration: 0.28, ease: "power2.out" }, 0)
-          .fromTo(media, { clipPath: "inset(49.7% 0% 49.7% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", duration: 0.72, ease: "power3.inOut" }, 0.28)
-          .fromTo(cuts[0], { y: 0 }, { y: () => -innerHeight / 2, duration: 0.72, ease: "power3.inOut" }, 0.28)
-          .fromTo(cuts[1], { y: 0 }, { y: () => innerHeight / 2 - 1, duration: 0.72, ease: "power3.inOut" }, 0.28)
-          .fromTo(img, { scale: 1.3 }, { scale: 1, duration: 0.72, ease: "power3.inOut" }, 0.28)
-          .fromTo($(".next3__t", nx), { opacity: 0, y: 46 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, 0.62);
-      });
-      mm.add("(max-width: 900px)", () => {
-        G.fromTo(media, { clipPath: "inset(30% 0% 30% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", ease: "none", scrollTrigger: { trigger: nx, start: "top bottom", end: "top 20%", scrub: true } });
-      });
+      const media = $("[data-nx-media]", nx), img = $("img", media);
+      G.timeline({ scrollTrigger: { trigger: nx, start: "top 96%", end: "top top", scrub: 0.6 } })
+        .fromTo(media, { clipPath: "inset(18% 0% 18% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", ease: "power2.inOut", duration: 1 }, 0)
+        .fromTo(img, { scale: 1.06 }, { scale: 1, ease: "none", duration: 1 }, 0)
+        .fromTo($(".next3__t", nx), { y: 40 }, { y: 0, ease: "power2.out", duration: 0.7 }, 0.2);
     }
-
-    // the end panel: its call to contact rises out of the depth as the page lifts off it
-    const endEl = $("[data-end]"), endIn = $("[data-end-in]");
-    const lift = { trigger: "main", start: "bottom bottom", end: () => `bottom ${innerHeight - endEl.offsetHeight}px`, scrub: true, invalidateOnRefresh: true };
-    if (endEl && endIn) G.fromTo(endIn, { yPercent: -30, scale: 0.94 }, { yPercent: 0, scale: 1, ease: "none", scrollTrigger: lift });
-    // the photograph that closes a rubric dissolves from the bottom as the page lifts off, so no edge crosses the end panel
-    if (endEl && $(".next3")) G.fromTo(".next3", { "--lift": 0 }, { "--lift": 1, ease: "none", scrollTrigger: { ...lift } });
+    // the end panel's call to contact rises with the scroll, like any chapter (no lift-off: no edge crosses its type)
+    const endIn = $("[data-end-in]");
+    if (endIn) G.fromTo(endIn, { y: 70, opacity: 0.4 }, { y: 0, opacity: 1, ease: "none", scrollTrigger: { trigger: "[data-end]", start: "top bottom", end: "top 35%", scrub: true } });
 
     // rubric opening image: settles in, then drifts as the page moves on
     const rh = $("[data-rh]");
     if (rh) {
       const img = $("img", rh);
-      G.fromTo(img, { scale: 1.1, opacity: 0.4 }, { scale: 1, opacity: 1, duration: 2.2, ease: "power3.out" });
+      if (!root.classList.contains("pt-nx")) G.fromTo(img, { scale: 1.06 }, { scale: 1, duration: 2.2, ease: "power3.out", delay: root.classList.contains("pt-in") ? 0.5 : 0 });
       G.to(img, { yPercent: 12, ease: "none", scrollTrigger: { trigger: rh, start: "top top", end: "bottom top", scrub: true } });
-      G.to($(".rh__title", rh), { yPercent: -60, opacity: 0.15, ease: "none", scrollTrigger: { trigger: rh, start: "top top", end: "bottom top", scrub: true } });
+      G.to($(".rh__title", rh), { yPercent: -40, opacity: 0.2, ease: "none", scrollTrigger: { trigger: rh, start: "top top", end: "bottom top", scrub: true } });
     }
 
     // scenes: main's ground flows from ink to deep ink as the sections take over (they have no ground of their own,
@@ -436,21 +405,22 @@
           const top = geo[i][0] - y, bottom = geo[i][1] - y;
           if (i) c = mix(c, s.tone, clamp((vh * 0.85 - top) / (vh * 0.55)));
           if (!s.moves || s.el.classList.contains("is-pinned")) return;   // a pinned section must keep no transform
-          const enter = clamp((vh - top) / (vh * 0.7)), leave = clamp((vh * 0.55 - bottom) / (vh * 0.55));
+          const under = scenes[i - 1]?.el.classList.contains("is-pinned");  // it rises under the pinned exit: no lag
+          const enter = under ? 1 : clamp((vh - top) / (vh * 0.7)), leave = clamp((vh * 0.55 - bottom) / (vh * 0.55));
           const t = `translate3d(0,${((1 - enter - leave) * vh * 0.09).toFixed(1)}px,0)`, o = (1 - leave * 0.7).toFixed(3);
           if (s.t !== t) { s.el.style.transform = s.t = t; }
           if (s.o !== o) { s.el.style.opacity = s.o = o; }
         });
         if (hasEnd) c = mix(c, RGB.deeper, clamp((vh * 1.5 - (mainEnd - y)) / (vh * 0.5)));
         const css = `rgb(${c.map(Math.round).join(",")})`;
-        if (css !== col) { mainEl.style.backgroundColor = col = css; }
+        if (css !== col) { mainEl.style.backgroundColor = col = css; mainEl.style.setProperty("--g", css); }
       };
       ST.addEventListener("refresh", () => { measure(); paint(); });
       addEventListener("scroll", paint, { passive: true });
       measure(); paint();
     }
 
-    addEventListener("load", () => { placeCells(); ST.refresh(); });
+    addEventListener("load", () => ST.refresh());
     document.fonts?.ready.then(() => ST.refresh());
   }
 
@@ -464,6 +434,13 @@
       if (url.origin !== location.origin || !url.protocol.startsWith("http")) return;
       if (url.pathname === location.pathname && url.search === location.search) return;   // same page: anchors, works
       e.preventDefault();
+      if (a.hasAttribute("data-next")) {   // the panel is the next page's first frame: bring it whole, then hand over
+        try { sessionStorage.setItem("cc-pt", "nx"); } catch (err) {}
+        const off = Math.abs(a.getBoundingClientRect().top);
+        if (off > 2) lenis ? lenis.scrollTo(a, { duration: 0.6 }) : a.scrollIntoView({ behavior: "smooth" });
+        setTimeout(() => { location.href = url.href; }, off > 2 ? 640 : 60);
+        return;
+      }
       try { sessionStorage.setItem("cc-pt", "1"); } catch (err) {}
       const pt = document.createElement("div");
       pt.className = "pt"; pt.setAttribute("aria-hidden", "true");
@@ -473,35 +450,6 @@
     });
     // back/forward restores the page from memory with the page still closed
     addEventListener("pageshow", (e) => { if (e.persisted) $$(".pt").forEach((x) => x.remove()); });
-  }
-
-  /* ---------- a label follows the pointer over the works (fine pointers) ---------- */
-  if (!reduce && fine) {
-    const tag = document.createElement("div");
-    tag.className = "cur"; tag.setAttribute("aria-hidden", "true"); tag.textContent = "Voir";
-    document.body.appendChild(tag);
-    root.classList.add("has-cur");
-    let x = 0, y = 0, tx = 0, ty = 0, on = false, raf = 0;
-    const loop = () => {
-      x += (tx - x) * 0.22; y += (ty - y) * 0.22;
-      tag.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
-      raf = on || Math.abs(tx - x) + Math.abs(ty - y) > 0.5 ? requestAnimationFrame(loop) : 0;
-    };
-    addEventListener("pointermove", (e) => {
-      tx = e.clientX; ty = e.clientY;
-      const hit = !!(e.target.closest && e.target.closest("[data-view]"));
-      if (hit && !on) { x = tx; y = ty; }
-      if (hit !== on) { on = hit; tag.classList.toggle("is-on", on); }
-      if (on && !raf) raf = requestAnimationFrame(loop);
-    }, { passive: true });
-  }
-
-  /* ---------- end panel: revealed from under the page when it fits on screen ---------- */
-  const endPanel = $("[data-end]");
-  if (endPanel && !reduce) {
-    const fit = () => endPanel.classList.toggle("is-reveal", endPanel.offsetHeight < innerHeight * 0.92);
-    fit();
-    addEventListener("resize", fit);
   }
 
   /* ---------- viewer ---------- */

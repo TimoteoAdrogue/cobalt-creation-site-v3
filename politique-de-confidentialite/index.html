@@ -21,7 +21,7 @@
 <link rel="preload" href="../assets/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="../assets/fonts/bodonimoda.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../assets/site.css">
-<script>document.documentElement.classList.add('js');try{if(sessionStorage.getItem('cc-pt')){sessionStorage.removeItem('cc-pt');if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('pt-in')}}catch(e){}</script>
+<script>document.documentElement.classList.add('js');try{var f=sessionStorage.getItem('cc-pt');if(f){sessionStorage.removeItem('cc-pt');if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add(f==='nx'?'pt-nx':'pt-in')}}catch(e){}</script>
 <script src="../assets/vendor/gsap.min.js" defer></script>
 <script src="../assets/vendor/ScrollTrigger.min.js" defer></script>
 <script src="../assets/vendor/lenis.min.js" defer></script>
@@ -54,12 +54,12 @@
       <div>
         <img src="../assets/media/logo-cobalt-creme.png" width="653" height="337" alt="Cobalt Création" loading="lazy">
         <p class="ft3__name">Agence Cobalt Création</p>
-        <p>35, Boulevard Berthier - 75017 Paris<br><a href="tel:+33144098185">+33 (0) 1 44 09 81 85</a><br><a href="mailto:contact@cobaltcreation.com">contact@cobaltcreation.com</a><br>Horaires d’ouverture : 9h30 - 18h30</p>
+        <p>35, Boulevard Berthier - 75017 Paris<br>Horaires d’ouverture : 9h30 - 18h30</p>
       </div>
       <ul aria-label="Pages"><li><a href="../">Accueil</a></li><li><a href="../creation-d-objet-unique/">Nos ateliers signatures</a></li><li><a href="../ateliers-de-personnalisation/">Nos animations retail sur mesure</a></li><li><a href="../design-graphique-design-papier/">Notre studio graphique &amp; design</a></li><li><a href="../coffrets-packaging/">Notre atelier parisien</a></li><li><a href="../contact-feedback/">Contact</a></li></ul>
-      <ul aria-label="Liens"><li><a href="https://www.instagram.com/cobaltcreation/" rel="noopener" target="_blank">Instagram</a></li><li><a href="mailto:contact@cobaltcreation.com">contact@cobaltcreation.com</a></li></ul>
+      <ul aria-label="Liens"><li><a href="https://www.instagram.com/cobaltcreation/" rel="noopener" target="_blank">Instagram</a></li><li><a href="../politique-de-confidentialite/">Politique de confidentialité</a></li></ul>
     </div>
-    <div class="ft3__base"><span>Cobalt Création, Paris</span><a href="../politique-de-confidentialite/">Politique de confidentialité</a></div>
+    <p class="ft3__base">Cobalt Création, Paris</p>
   </div>
 </footer>
 

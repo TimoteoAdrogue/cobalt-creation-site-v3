@@ -35,7 +35,7 @@
     return vec2(H.x, H.y * ca - (H.z - f) * sa) / uZoom + uPan;
   }
   float hL(vec2 q) { return texture(uHeight, q / uTile).r; }
-  float mA(sampler2D s, vec2 uv) { return (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) ? 0.0 : texture(s, uv).a; }
+  float mA(sampler2D s, vec2 uv) { vec2 w = smoothstep(0.0, 0.06, uv) * smoothstep(1.0, 0.94, uv); return texture(s, clamp(uv, 0.0, 1.0)).a * w.x * w.y; }
 
   void main() {
     vec2 pc = (gl_FragCoord.xy - uRes * 0.5) / uDpr; pc.y = -pc.y;
@@ -145,6 +145,12 @@
   gl.uniform1i(U.uHeight, 0); gl.uniform1i(U.uMask, 1); gl.uniform1i(U.uBlur, 2); gl.uniform1i(U.uLeaf, 3);
   const load = (src) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
   const base = new URL("media/", document.currentScript ? document.currentScript.src : location.href).href;
+  let STAMP = null;
+  try { STAMP = new FontFace("Bodoni Stamp", `url(${new URL("../fonts/bodonimoda.woff2", base).href})`, { weight: "400 700", variationSettings: '"opsz" 24' }); document.fonts.add(STAMP); } catch (e) { STAMP = null; }
+  const FACE = '"Bodoni Stamp", "Bodoni Moda", Didot, serif';
+  // canvas blur support, tested once on a dot (the monogram's centre pixel can be empty between two letters)
+  const blurOK = (() => { try { const t = document.createElement("canvas"); t.width = t.height = 9; const x = t.getContext("2d"); if (typeof x.filter !== "string") return false;
+    x.filter = "blur(2px)"; x.fillStyle = "#fff"; x.fillRect(4, 4, 1, 1); return x.getImageData(2, 4, 1, 1).data[3] > 0; } catch (e) { return false; } })();
 
   // ---- the monogram, drawn at high resolution into masks (same layout as the SVG) ----
   const maskC = document.createElement("canvas"), blurC = document.createElement("canvas"), smallC = document.createElement("canvas");
@@ -161,11 +167,16 @@
     const c = maskC.getContext("2d");
     c.clearRect(0, 0, W, H); c.fillStyle = "#fff"; c.textBaseline = "alphabetic";
     c.translate(ox, oy);
-    const big = `500 ${330 * s}px "Bodoni Moda", Didot, serif`, dot = `500 ${112 * s}px "Bodoni Moda", Didot, serif`;
     const chars = [...text];
-    c.font = big; const lw = chars.map((ch) => c.measureText(ch).width);
-    c.font = dot; const dw = c.measureText("·").width;
-    const total = lw.reduce((a, b) => a + b, 0) + (chars.length - 1) * (40 * s + dw);
+    let big, dot, lw, dw, total;
+    const set = (k) => {
+      big = `500 ${330 * k}px ${FACE}`; dot = `500 ${112 * k}px ${FACE}`;
+      c.font = big; lw = chars.map((ch) => c.measureText(ch).width);
+      c.font = dot; dw = c.measureText("·").width;
+      total = lw.reduce((a, b) => a + b, 0) + (chars.length - 1) * (40 * k + dw);
+    };
+    set(s);
+    if (total > W0 * 0.92) set(s * W0 * 0.92 / total);   // wide initials (W·W·M) shrink to fit the stage
     let x = W0 / 2 - total / 2;
     chars.forEach((ch, i) => {
       if (i) { x += 20 * s; c.font = dot; c.fillText("·", x, 320 * s - 92 * s); x += dw + 20 * s; }
@@ -175,8 +186,8 @@
     blurC.width = W; blurC.height = H;
     const bc = blurC.getContext("2d"); bc.clearRect(0, 0, W, H);
     const radius = W0 / 150;
-    if (typeof bc.filter === "string") { bc.filter = `blur(${radius.toFixed(1)}px)`; bc.drawImage(maskC, 0, 0); bc.filter = "none"; }
-    if (typeof bc.filter !== "string" || !bc.getImageData(Math.round(W / 2), Math.round(H / 2), 1, 1).data[3] && text) {
+    if (blurOK) { bc.filter = `blur(${radius.toFixed(1)}px)`; bc.drawImage(maskC, 0, 0); bc.filter = "none"; }
+    else {
       const mid = document.createElement("canvas");
       const mw = Math.round(W / 4), mh = Math.round(H / 4), sw = Math.round(W / 16), shh = Math.round(H / 16);
       mid.width = mw; mid.height = mh; smallC.width = sw; smallC.height = shh;
@@ -190,9 +201,11 @@
   };
 
   // ---- sizing ----
-  let dpr = 1, cw = 0, ch = 0;
+  let dpr = 1, cw = 0, ch = 0, tile = 360, RISE = 0;
   const resize = () => {
     const r = hero.getBoundingClientRect();
+    tile = 360 * Math.min(1, Math.max(0.55, innerWidth / 1440));   // the grain keeps its scale on a narrow column
+    RISE = r.height * 0.24;                                          // how far the letters travel up as the story runs
     dpr = Math.min(devicePixelRatio || 1, 2);
     if (r.width * r.height * dpr * dpr > 5.2e6) dpr = Math.sqrt(5.2e6 / (r.width * r.height));
     cw = Math.round(r.width * dpr); ch = Math.round(r.height * dpr);
@@ -212,7 +225,8 @@
     tx = e.clientX - r.left - r.width / 2; ty = e.clientY - r.top - r.height / 2; lastMove = performance.now();
   }, { passive: true });
   mono.addEventListener("mono:text", (e) => { text = e.detail || "CC"; drawMask(); });
-  mono.addEventListener("mono:stamp", () => { pressT = performance.now(); sweepT = pressT + 500; });
+  // typing re-presses from where the letters are (70 %), so what is already there stays visible
+  mono.addEventListener("mono:stamp", (e) => { const now = performance.now(); pressT = e.detail && e.detail.soft ? now - 420 : now; sweepT = now + 500; });
 
   const frame = (now) => {
     raf = 0;
@@ -223,19 +237,19 @@
     if (wrap) { const wr = wrap.getBoundingClientRect(); const run = wrap.offsetHeight - innerHeight; prog = run > 0 ? Math.min(Math.max(-wr.top / run, 0), 1) : 0; }
     const intro = introT < 0 ? 0 : ease((now - introT) / 2600);
     const sp = smooth(0.0, 0.42, prog);
-    const tilt = (1 - intro) * 0.55 + sp * 0.92 + Math.sin(t * 0.32) * 0.025;
-    const zoom = (0.82 + 0.18 * intro) * (1 - 0.22 * sp);
-    const pan = [Math.sin(t * 0.21) * 14, Math.cos(t * 0.17) * 8 + sp * 40];
+    const tilt = (1 - intro) * 0.55 + sp * 0.35 + Math.sin(t * 0.32) * 0.025;
+    const zoom = (0.82 + 0.18 * intro) * (1 - 0.42 * sp);
+    const pan = [Math.sin(t * 0.21) * 14, Math.cos(t * 0.17) * 8 + sp * RISE];
     // light: follows the pointer, or wanders slowly; grazes lower as the hide tilts
     if (now - lastMove > 3500) { tx = Math.cos(t * 0.42) * innerWidth * 0.34; ty = Math.sin(t * 0.29) * innerHeight * 0.26 - innerHeight * 0.05; }
     px += (tx - px) * 0.08; py += (ty - py) * 0.08;
-    const lz = 560 - 300 * sp;
+    const lz = 560 - 380 * sp;   // the lamp drops and rakes across the grain
     // press and sheen
     if (pressT > 0) press = ease((now - pressT) / 900) * (1 + 0.06 * Math.sin(Math.min((now - pressT) / 900, 1) * Math.PI));
     if (sweepT > 0 && now > sweepT) { const k = (now - sweepT) / 1600; sheen = -0.3 + 1.6 * ease(k); if (k >= 1) sweepT = -1; }
     else if (sweepT < 0) sheen += ((px / (innerWidth || 1)) + 0.5 - sheen) * 0.05;
     gl.uniform2f(U.uRes, cw, ch); gl.uniform1f(U.uDpr, dpr); gl.uniform1f(U.uTime, t);
-    gl.uniform3f(U.uLight, px / zoom, py / zoom, lz); gl.uniform1f(U.uTile, 360);
+    gl.uniform3f(U.uLight, px / zoom, py / zoom, lz); gl.uniform1f(U.uTile, tile);
     gl.uniform4f(U.uRect, rect.x, rect.y, rect.w, rect.h);
     gl.uniform1f(U.uFinish, FIN[mono.dataset.finish] ?? 0); gl.uniform1f(U.uPress, Math.min(press, 1.06));
     gl.uniform1f(U.uSheen, sheen); gl.uniform1f(U.uGhost, mono.classList.contains("is-ghost") ? 0.4 : 1);
@@ -245,7 +259,7 @@
   };
   const start = () => { if (!raf && visible) raf = requestAnimationFrame(frame); };
 
-  Promise.all([load(base + "leather-height.png"), load(base + "goldleaf.jpg"), document.fonts ? document.fonts.load('500 330px "Bodoni Moda"') : null])
+  Promise.all([load(base + "leather-height.png"), load(base + "goldleaf.jpg"), document.fonts ? Promise.all([document.fonts.load('500 330px "Bodoni Moda"'), STAMP ? STAMP.load().catch(() => {}) : null]) : null])
     .then(([h, leaf]) => {
       upload(0, tHeight, h); upload(3, tLeaf, leaf);
       resize();
