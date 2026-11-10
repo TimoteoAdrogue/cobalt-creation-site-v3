@@ -265,7 +265,7 @@
       resize();
       addEventListener("resize", () => { clearTimeout(resize.t); resize.t = setTimeout(resize, 120); }, { passive: true });
       if ("IntersectionObserver" in window) new IntersectionObserver(([e]) => { visible = e.isIntersecting; start(); }).observe(hero);
-      introT = performance.now(); pressT = introT + 700; sweepT = pressT + 500;
+      introT = performance.now(); pressT = introT + (root.classList.contains("pt-in") ? 1200 : 700); sweepT = pressT + 500;   // after the lid opens
       start();
       requestAnimationFrame(() => root.classList.add("gl-ready"));
     })

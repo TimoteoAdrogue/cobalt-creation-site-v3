@@ -441,26 +441,29 @@ button { font: inherit; color: inherit; }
 .vw::backdrop { background: rgba(244, 241, 236, .98); }
 .vw[open] { display: grid; grid-template-columns: 1fr minmax(260px, 360px); }
 .vw__stage { position: relative; display: grid; place-items: center; padding: 72px 96px; min-height: 0; touch-action: pan-y; }
-.vw__stage img { max-width: 100%; max-height: calc(100dvh - 144px); width: auto; height: auto; object-fit: contain; transition: opacity .35s var(--settle), transform .7s var(--settle); }
-.vw__stage img.is-loading { opacity: .15; transform: scale(.985); }
+.vw__stage img { max-width: 100%; height: calc(100dvh - 144px); width: auto; object-fit: contain;   /* fixed box: the tile and the large file show at one size */ transition: opacity .35s var(--settle), transform .7s var(--settle); }
+/* the viewer fades up from the page (no one-frame jump from ink to paper) */
+@media (prefers-reduced-motion: no-preference) {
+  .vw[open] { animation: vw-in .4s var(--settle) both; }
+  .vw[open]::backdrop { animation: vw-in .4s var(--settle) both; }
+}
+@keyframes vw-in { from { opacity: 0; } }
 .vw__meta { align-self: end; padding: 0 44px 64px 0; }
-.vw__count { color: #8A6A3E; margin-bottom: 22px; }
+.vw__nav { display: flex; align-items: center; gap: 6px; margin: 0 0 22px -14px; }
+.vw__count { color: #8A6A3E; margin: 0; min-width: 5.5em; text-align: center; }
 .vw__t { font-size: 30px; line-height: 1.15; margin-bottom: 10px; color: var(--ground); }
 .vw__s { color: #4B6A80; white-space: pre-line; font-size: 15px; }
 .vw__d { font-size: 15px; }
 .vw__btn { position: absolute; z-index: 2; border: 0; background: none; color: var(--ground); cursor: pointer; padding: 14px; }
 .vw__close { top: 20px; right: 24px; }
-.vw__prev, .vw__next { top: 50%; translate: 0 -50%; width: 56px; height: 56px; font-size: 26px; letter-spacing: 0; }
-.vw__prev { left: 18px; }
-.vw__next { right: calc(min(360px, 30vw) + 8px); }
+.vw__prev, .vw__next { position: static; width: 48px; height: 48px; padding: 0; font-size: 24px; letter-spacing: 0; transition: transform .4s var(--settle); }
+.vw__prev:hover { transform: translateX(-4px); } .vw__next:hover { transform: translateX(4px); }
 @media (max-width: 900px) {
   .vw[open] { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
   .vw__stage { padding: 68px 16px 8px; }
-  .vw__stage img { max-height: calc(100dvh - 280px); }
+  .vw__stage img { height: calc(100dvh - 280px); }
   .vw__meta { padding: 12px 22px 30px; align-self: start; }
   .vw__t { font-size: 24px; }
-  .vw__next { right: 6px; } .vw__prev { left: 6px; }
-  .vw__prev, .vw__next { top: 40%; }
 }
 
 /* ---------- contact ---------- */
@@ -631,3 +634,5 @@ html.pt-in::before { content: ""; animation: pt-fade .8s var(--settle) .35s forw
 
 /* arriving from the next-rubric panel: the opening frame is already in place, the title needs no entrance */
 .pt-nx .rh .split .sw__in { transform: none !important; transition: none !important; }
+/* after the gold cut, the arriving page's own entrances start once the lid has opened */
+.pt-in .rh .split .sw__in, .pt-in .ctx3 .split .sw__in { transition-delay: calc(.55s + var(--w, 0) * 55ms); }

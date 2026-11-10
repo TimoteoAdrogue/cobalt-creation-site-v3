@@ -165,7 +165,8 @@
       mono.dataset.finish = btn.dataset.finish;
       stamp();
     }));
-    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => stamp(), 120));
+    // after a page transition the stamp waits for the lid to open, so it is seen
+    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => stamp(), root.classList.contains("pt-in") ? 700 : 120));
 
     // light follows a fine pointer, or sweeps slowly on its own, only while the hero is on screen
     if (!reduce && light) {
@@ -468,18 +469,24 @@
     const visible = () => all.filter((a) => !a.closest("[hidden]"));
     const data = (a) => JSON.parse(a.dataset.view);
     const preload = (k) => { const it = data(items[(k + items.length) % items.length]); const p = new Image(); p.src = avif ? it.avif : it.jpg; };
+    let want = "";
     const show = (k) => {
       cur = (k + items.length) % items.length;
       const it = data(items[cur]);
-      img.classList.add("is-loading");
-      src.srcset = it.avif; img.src = it.jpg; img.alt = it.alt;
+      // the tile's own photograph shows at once; the large file replaces it once decoded (never a blank frame)
+      const tile = $("img", items[cur])?.currentSrc;
+      const large = avif ? it.avif : it.jpg;
+      want = large;
+      if (tile) { src.srcset = ""; img.src = tile; }
+      img.alt = it.alt;
+      const L = new Image(); L.src = large;
+      (L.decode ? L.decode() : Promise.resolve()).catch(() => {}).then(() => { if (want === large) { src.srcset = it.avif; img.src = it.jpg; } });
       count.textContent = `${cur + 1} / ${items.length}`;
       t.textContent = it.t; s.textContent = it.s; d.textContent = it.d;
       t.hidden = !it.t; s.hidden = !it.s; d.hidden = !it.d;
       preload(cur + 1); preload(cur - 1);
       if (hashes) { const h = `#piece-${it.n}`; if (location.hash !== h) history.replaceState(history.state, "", h); }
     };
-    img.addEventListener("load", () => img.classList.remove("is-loading"));
     const open = (a, fromHistory = false) => {
       items = visible();
       opener = a;
