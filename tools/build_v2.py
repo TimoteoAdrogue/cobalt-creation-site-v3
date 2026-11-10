@@ -19,7 +19,7 @@ A = c.Assets(SITE)
 
 TITLES = {k: c.PAGES["pages"][k]["title"] for k in c.PAGES["pages"]}
 # decided before the first paint, so the opening never flashes the finished page first
-PT_SNIPPET = ";try{if(sessionStorage.getItem('cc-pt')){sessionStorage.removeItem('cc-pt');if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('pt-in')}}catch(e){}"
+PT_SNIPPET = ";try{var pt=sessionStorage.getItem('cc-pt');if(pt){sessionStorage.removeItem('cc-pt');if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add(pt==='img'?'pt-img':'pt-in')}}catch(e){}"
 INTRO_SNIPPET = ";try{if(!sessionStorage.getItem('cc-intro')&&!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('is-opening')}catch(e){}"
 DESCS = {k: c.PAGES["pages"][k]["description"] for k in c.PAGES["pages"]}
 LABEL = dict(c.NAV)
@@ -31,6 +31,46 @@ NEXT = {"creation-d-objet-unique": "ateliers-de-personnalisation", "ateliers-de-
 
 def base(slug):
     return "../" if slug else ""
+
+
+def sharp(name, widths):
+    """V2-only derivatives above the shared set, cut from the client's original in src-media/ (cached in media/v2/),
+    for photographs shown larger than the shared files allow on a retina screen. Returns [{w, h, jpg, avif}]."""
+    m = c.MEDIA_INDEX[name]
+    stem = name.split("~")[0].replace("53e2f6_", "")[:12]
+    out = []
+    for w in widths:
+        w = min(w, m["w"])
+        h = round(m["h"] * w / m["w"])
+        rel = f"v2/{stem}-v{w}"
+        if not (c.MEDIA / f"{rel}.avif").exists():
+            from PIL import Image, ImageOps
+            Image.MAX_IMAGE_PIXELS = None
+            im = ImageOps.exif_transpose(Image.open(ROOT / "src-media" / name)).convert("RGB").resize((w, h), Image.LANCZOS)
+            (c.MEDIA / "v2").mkdir(exist_ok=True)
+            im.save(c.MEDIA / f"{rel}.jpg", "JPEG", quality=84, optimize=True, progressive=True)
+            im.save(c.MEDIA / f"{rel}.avif", "AVIF", quality=62, speed=6)
+        A.file(f"{rel}.jpg"); A.file(f"{rel}.avif")
+        if w not in [f["w"] for f in out]:
+            out.append({"w": w, "h": h, "jpg": f"{rel}.jpg", "avif": f"{rel}.avif"})
+    return out
+
+
+def vpic(name, b, sizes, more=(), cls="", alt="", eager=False, wide=False):
+    """<picture> from the shared derivatives (or the wide set) plus V2's sharper ones."""
+    files = list((c.ensure_wide(name) if wide else c.MEDIA_INDEX[name])["files"])
+    for f in files:
+        A.file(f["jpg"]); A.file(f["avif"])
+    top = max(f["w"] for f in files)
+    files += [f for f in sharp(name, more) if f["w"] > top]
+    files.sort(key=lambda f: f["w"])
+    avif = ", ".join(f"{b}assets/media/{f['avif']} {f['w']}w" for f in files)
+    jpg = ", ".join(f"{b}assets/media/{f['jpg']} {f['w']}w" for f in files)
+    f0 = files[0]
+    c_ = f' class="{cls}"' if cls else ""
+    return (f'<picture><source type="image/avif" srcset="{avif}" sizes="{sizes}">'
+            f'<img{c_} src="{b}assets/media/{f0["jpg"]}" srcset="{jpg}" sizes="{sizes}" width="{f0["w"]}" height="{f0["h"]}" '
+            f'alt="{esc(alt)}" loading="{"eager" if eager else "lazy"}" decoding="async"></picture>')
 
 
 def link(slug, target):
@@ -170,9 +210,8 @@ def page(slug, main, body_cls, lightbox=False, over_hero=True, end=""):
     if lightbox:
         lb = """<dialog class="lb" data-lightbox aria-label="Réalisation agrandie" data-lenis-prevent>
   <div class="lb__stage"><picture><source type="image/avif"><img alt=""></picture></div>
-  <div class="lb__meta"><p class="lb__count" aria-live="polite"></p><h2 class="lb__t"></h2><p class="lb__s"></p><p class="lb__d"></p></div>
-  <button class="lb__btn lb__prev" type="button" aria-label="Réalisation précédente">&larr;</button>
-  <button class="lb__btn lb__next" type="button" aria-label="Réalisation suivante">&rarr;</button>
+  <div class="lb__meta"><h2 class="lb__t"></h2><p class="lb__s"></p><p class="lb__d"></p>
+    <p class="lb__nav"><button class="lb__btn lb__prev" type="button" aria-label="Réalisation précédente">&larr;</button><span class="lb__count" aria-live="polite"></span><button class="lb__btn lb__next" type="button" aria-label="Réalisation suivante">&rarr;</button></p></div>
   <button class="lb__btn lb__close" type="button">Fermer</button>
 </dialog>"""
     html = f"""{head(slug)}
@@ -203,11 +242,13 @@ def build_home():
     hero_sub = f'<p class="hero__sub reveal-soft">{esc(ag[0])}</p>'
     top = hero(slug, hero_title, hero_sub, HOME_SLIDE_NAMES)
 
-    words = " ".join(f'<span class="w">{esc(w)}</span>' for w in ag[1].split())
+    # the agency text, verbatim, set as a statement (its first sentence) and a paragraph (its second)
+    lead, rest = ag[1].split(". ", 1)
     manifest = f"""<section class="manifest" aria-labelledby="agence-t">
   <div class="wrap manifest__in">
     <h2 id="agence-t" class="eyebrow">{esc(h['title'])}</h2>
-    <p class="manifest__lit" data-lit>{words}</p>
+    <p class="manifest__lead split">{esc(lead)}.</p>
+    <p class="manifest__rest" data-reveal>{esc(rest)}</p>
   </div>
 </section>"""
 
@@ -219,7 +260,7 @@ def build_home():
     big = esc(sentence).replace("en offrant des créations sur-mesure", "<em>en offrant des créations sur-mesure</em>", 1)
     frame = f"""<section class="frame" data-frame aria-labelledby="frame-t">
   <div class="frame__pin">
-    <div class="frame__media" data-frame-media>{A.picture_wide(fw["media"], b, "100vh", alt="", cls="frame__img")}<span class="frame__shade" aria-hidden="true"></span>
+    <div class="frame__media" data-frame-media>{vpic(fw["media"], b, f"max(112vw, calc(112vh * {c.MEDIA_INDEX[fw['media']]['w'] / c.MEDIA_INDEX[fw['media']]['h']:.3f}))", (3840,), cls="frame__img", wide=True)}<span class="frame__shade" aria-hidden="true"></span>
       <div class="frame__text wrap">
         <h2 class="frame__k" id="frame-t">{esc(kicker)}</h2>
         <p class="frame__p split">{big}</p>
@@ -229,25 +270,26 @@ def build_home():
   </div>
 </section>"""
 
-    cards = []
+    # the three métiers: one sticky photograph column (desktop), the métiers scroll beside it; phones get each photograph inline
+    stills, items = [], []
     for i, col in enumerate(h["columns"]):
+        href = link(slug, col["slug"])
         paras = "".join(f"<p>{esc(p)}</p>" for p in col["paras"])
-        lead = f'<p class="card__lead">{esc(col["lead"])}</p>' if col["lead"] else ""
+        lead = f'<p class="mt__lead">{esc(col["lead"])}</p>' if col["lead"] else ""
         lis = "".join(f"<li>{esc(x)}</li>" for x in col["bullets"])
-        pic = A.picture(col["image"], b, "(max-width: 900px) 100vw, 56vw", alt="", cls="card__img")
-        cards.append(f"""<article class="card" style="--i:{i}">
-      <div class="card__in">
-        <span class="card__veil" aria-hidden="true"></span>
-        <a class="card__media" href="{link(slug, col['slug'])}" tabindex="-1" aria-hidden="true">{pic}</a>
-        <div class="card__text">
-          <p class="card__num" aria-hidden="true"><span>0{i + 1}</span> / 0{len(h["columns"])}</p>
-          <h3 class="card__t"><a href="{link(slug, col['slug'])}">{esc(col['title'])}</a></h3>
-          {paras}{lead}<ul>{lis}</ul>
-          <a class="more" href="{link(slug, col['slug'])}">Voir les réalisations <span aria-hidden="true">&rarr;</span></a>
-        </div>
+        stills.append(f'<a class="mt__pic" href="{href}" tabindex="-1">{vpic(col["image"], b, "max(56vw, calc(100vh * 0.9))", (2000,), cls="mt__img")}</a>')
+        items.append(f"""<article class="mt__item">
+      <a class="mt__ph" href="{href}" tabindex="-1" aria-hidden="true">{A.picture(col["image"], b, "100vw", alt="", cls="mt__img")}</a>
+      <div class="mt__body">
+        <h3 class="mt__t"><a class="split" href="{href}">{esc(col['title'])}</a></h3>
+        <div data-reveal>{paras}{lead}<ul class="mt__list">{lis}</ul>
+        <a class="more" href="{href}">Voir les réalisations <span aria-hidden="true">&rarr;</span></a></div>
       </div>
     </article>""")
-    metiers = f"""<section class="stack" aria-label="Nos métiers">{''.join(cards)}</section>"""
+    metiers = f"""<section class="mt" aria-label="Nos métiers" data-mt>
+  <div class="mt__media" aria-hidden="true">{''.join(stills)}</div>
+  <div class="mt__text">{''.join(items)}</div>
+</section>"""
 
     # pinned horizontal gallery: four works per rubric, in live order, linked to their page
     items = []
@@ -258,20 +300,19 @@ def build_home():
             ln = c.work_lines(w)
             m = c.MEDIA_INDEX[w["media"]]
             ar = m["w"] / m["h"]
-            pic = A.picture(w["media"], b, f"(max-width: 900px) 78vw, calc(62vh * {ar * 1.16:.2f})", alt=c.work_alt(w), cls="hx__img")
-            items.append(f'<li class="hx__item" style="--ar:{ar:.3f}"><a href="{link(slug, s)}#piece-{n}"><span class="hx__frame">{pic}</span>'
+            pic = A.picture(w["media"], b, f"(max-width: 900px) 80vw, calc(62vh * {ar * 1.16:.2f})", alt=c.work_alt(w), cls="hx__img")
+            _, data, _ = work_bits(w, len(items) + 1, b)
+            items.append(f'<li class="hx__item" style="--ar:{ar:.3f}"><a href="{link(slug, s)}#piece-{n}" data-lb="{len(items) + 1}" data-item=\'{esc(data)}\'><span class="hx__frame">{pic}</span>'
                          f'<span class="hx__cap"><span class="hx__t">{esc(ln[0])}</span><span class="hx__s">{esc(" · ".join(ln[1:]))}</span>'
                          f'<span class="hx__r">{esc(LABEL[s])}</span></span></a></li>')
     rubric_links = "".join(f'<li><a href="{link(slug, s)}">{esc(LABEL[s])}</a></li>' for s in c.RUBRICS)
-    works = f"""<section class="hx" aria-labelledby="hx-t" data-hx data-scene="cream">
+    works = f"""<section class="hx" aria-labelledby="hx-t" data-hx>
   <div class="hx__pin">
-    <span class="hx__ghost" aria-hidden="true" data-hx-ghost>Réalisations</span>
     <div class="hx__head wrap">
       <h2 id="hx-t" class="h-sec">Réalisations</h2>
       <ul class="hx__rubrics">{rubric_links}</ul>
     </div>
     <div class="hx__viewport"><ul class="hx__track" data-hx-track>{''.join(items)}</ul></div>
-    <div class="hx__bar wrap" aria-hidden="true"><span data-hx-bar></span></div>
   </div>
 </section>"""
 
@@ -296,15 +337,17 @@ def build_home():
         leaves.append(f'<div class="fb__leaf" data-chapter="{esc(chapter(bk[k + 2]["page"]) if k + 2 < len(bk) else "Le book")}">'
                       f'<div class="fb__face fb__front">{page_img(front, k == 0)}<span class="fb__sheen" aria-hidden="true"></span></div>'
                       f'<div class="fb__face fb__back">{page_img(back)}<span class="fb__sheen" aria-hidden="true"></span></div></div>')
-    strip = "".join(f'<li>{page_img(pg)}</li>' for pg in bk)
-    book = f"""<section class="fb" aria-labelledby="book-t" data-fb data-scene="ink">
+    cells = [[bk[0]]] + [bk[k:k + 2] for k in range(1, len(bk) - 1, 2)] + [[bk[-1]]]
+    spread = ' class="is-spread"'
+    strip = "".join(f'<li{spread if len(cl) == 2 else ""}>{"".join(page_img(pg) for pg in cl)}</li>' for cl in cells)
+    book = f"""<section class="fb" aria-labelledby="book-t" data-fb>
   <div class="fb__pin">
     <div class="fb__head wrap">
       <h2 id="book-t" class="h-sec">{lines(h['book_title'])}</h2>
-      <p class="fb__chapter" aria-live="off"><span data-fb-chapter>Le book</span></p>
-      <div class="fb__dl"><a class="book__btn" href="assets/media/cobalt-creation-book.pdf" download="Cobalt-Creation-Book.pdf"><span>{esc(h['book_link'])}</span><span aria-hidden="true">&darr;</span></a><span class="book__meta">PDF, {c.BOOK_SIZE}</span></div>
+      <a class="lnk fb__dl" href="assets/media/cobalt-creation-book.pdf" download="Cobalt-Creation-Book.pdf"><span>{esc(h['book_link'])}</span><span class="fb__size">PDF, {c.BOOK_SIZE}</span><span aria-hidden="true">&darr;</span></a>
     </div>
-    <div class="fb__stage"><div class="fb__book" data-fb-book>{''.join(leaves)}</div></div>
+    <div class="fb__stage"><div class="fb__book" data-fb-book>{''.join(leaves)}<span class="fb__edge fb__edge--l" aria-hidden="true"></span><span class="fb__edge fb__edge--r" aria-hidden="true"></span></div></div>
+    <p class="fb__chapter wrap" aria-live="off"><span data-fb-chapter>Le book</span></p>
     <ul class="fb__strip" aria-label="Pages du book">{strip}</ul>
   </div>
 </section>"""
@@ -315,13 +358,16 @@ def build_home():
     def item(l):
         A.file(f"logos/{l['file']}")
         u = f"assets/media/logos/{l['file']}"
-        return f'<div class="mq__item"><span class="logo" style="-webkit-mask-image:url({u});mask-image:url({u})"></span></div>'
+        ar = l["w"] / l["h"]
+        hh = min(max((4600 / ar) ** 0.5, 22), 64)   # same area for every mark, within a readable height
+        return (f'<div class="mq__item" style="--w:{hh * ar:.0f}px;--h:{hh:.0f}px">'
+                f'<span class="logo" style="-webkit-mask-image:url({u});mask-image:url({u})"></span></div>')
     row1 = "".join(item(l) for l in logos[:half])
     row2 = "".join(item(l) for l in logos[half:])
     grid = "".join(item(l) for l in logos)
     names = "".join(f"<li>{esc(l['name'])}</li>" for l in logos)
-    trust = f"""<section class="trust" aria-labelledby="trust-t" data-scene="paper">
-  <div class="wrap"><h2 id="trust-t" class="h-sec trust__t">{lines(h['trust_title'])}</h2></div>
+    trust = f"""<section class="trust" aria-labelledby="trust-t" data-mist="ink">
+  <div class="wrap"><h2 id="trust-t" class="eyebrow trust__t">{esc(h['trust_title'])}</h2></div>
   <ul class="sr-only">{names}</ul>
   <div class="mq" aria-hidden="true" data-mq>
     <div class="mq__row"><div class="mq__track" data-dir="-1">{row1}{row1}</div></div>
@@ -329,34 +375,82 @@ def build_home():
   </div>
   <div class="wrap trust__grid" aria-hidden="true">{grid}</div>
 </section>"""
-    page(slug, top + manifest + frame + metiers + works + book + trust, "p-home", end=contact_band(slug))
+    page(slug, top + manifest + frame + metiers + works + trust + book, "p-home", lightbox=True, end=contact_band(slug))
 
 
-def tile(w, n, b, cls):
+def work_bits(w, n, b):
+    """Caption lines, description, alt text and the lightbox data of one work."""
     lines_ = c.work_lines(w)
     desc = c.work_desc(w)
     alt = c.work_alt(w) or f"Réalisation {n}"
-    sizes = "(max-width: 767px) 92vw, 64vw" if cls == "s2" else "(max-width: 767px) 92vw, 32vw"
-    pic = A.picture(w["media"], b, sizes, alt=alt, cls="tile__img")
     full_jpg, full_avif = A.largest(w["media"], b)
     data = json.dumps({"t": lines_[0] if lines_ else "", "s": "\n".join(lines_[1:]), "d": desc,
                        "jpg": full_jpg, "avif": full_avif, "alt": alt}, ensure_ascii=False)
-    cap = ""
+    meta = ""
     if lines_ or desc:
-        cap = (f'<figcaption class="tile__cap"><span class="tile__t">{esc(lines_[0] if lines_ else "")}</span>'
-               f'<span class="tile__s">{esc(" · ".join(lines_[1:]))}</span><span class="tile__d">{esc(desc)}</span></figcaption>')
+        meta = (f'<span class="tile__t">{esc(lines_[0] if lines_ else "")}</span>'
+                f'<span class="tile__s">{esc(" · ".join(lines_[1:]))}</span><span class="tile__d">{esc(desc)}</span>')
+    return alt, data, meta
+
+
+def tile(w, n, b, cls):
+    """A mosaic work: the photograph, then its caption, always visible (the description shows on hover)."""
+    alt, data, meta = work_bits(w, n, b)
+    sizes = "(max-width: 767px) 100vw, 64vw" if cls in ("s2", "s3") else "(max-width: 767px) 72vw, 32vw"
+    pic = A.picture(w["media"], b, sizes, alt=alt, cls="tile__img")
+    cap = f'<figcaption class="tile__meta">{meta}</figcaption>' if meta else ""
     return (f'<figure class="tile {cls}" id="piece-{n}" data-wipe>'
             f'<a class="tile__link" href="#piece-{n}" data-lb="{n}" data-item=\'{esc(data)}\' aria-label="Agrandir : {esc(alt)}">{pic}</a>{cap}</figure>')
 
 
+def plate(w, n, b):
+    """A work given a whole screen: at the viewport's height, at its own proportions, its caption in the margin."""
+    alt, data, meta = work_bits(w, n, b)
+    m = c.MEDIA_INDEX[w["media"]]
+    ar = m["w"] / m["h"]
+    pic = vpic(w["media"], b, f"(max-width: 767px) 100vw, calc(86vh * {ar:.3f})", (round(1900 * ar),), cls="plate__img", alt=alt)
+    cap = f'<figcaption class="plate__meta tile__meta">{meta}</figcaption>' if meta else ""
+    return (f'<figure class="plate" id="piece-{n}" style="--ar:{ar:.3f}" data-plate>'
+            f'<a class="plate__link" href="#piece-{n}" data-lb="{n}" data-item=\'{esc(data)}\' aria-label="Agrandir : {esc(alt)}">{pic}</a>{cap}</figure>')
+
+
+def plate_ok(w):
+    """Square or portrait, and tall enough to fill 86vh on a retina screen without being stretched."""
+    m = c.MEDIA_INDEX[w["media"]]
+    return m["w"] / m["h"] <= 1.05 and m["h"] >= 1800
+
+
+def segments(g):
+    """Pace a gallery: a plate opens it (when long) and returns after every four works or more, never as one of its
+    last two; the works between them form the 1/3 + 2/3 mosaic."""
+    out, run = [], []
+    for i, w in enumerate(g):
+        start = not out and not run and len(g) >= 8
+        if plate_ok(w) and len(g) - i - 1 >= 2 and (start or len(run) >= 4):
+            if run:
+                out.append(("tiles", run))
+            out.append(("plate", [w]))
+            run = []
+        else:
+            run.append(w)
+    if run:
+        out.append(("tiles", run))
+    return out
+
+
 def mosaic_cells(items, start, b):
-    cells = []
-    for i, w in enumerate(items):
+    """1/3 + 2/3 pairs, alternating sides; an odd run ends on a row of three thirds."""
+    n = len(items)
+    if n == 1:
+        return [tile(items[0], start, b, "s3")]
+    pairs = n if n % 2 == 0 else n - 3
+    cls = []
+    for i in range(pairs):
         pair, first = divmod(i, 2)
         big_first = pair % 2 == 1
-        cls = ("s2" if first == 0 else "s1") if big_first else ("s1" if first == 0 else "s2")
-        cells.append(tile(w, start + i, b, cls))
-    return cells
+        cls.append(("s2" if first == 0 else "s1") if big_first else ("s1" if first == 0 else "s2"))
+    cls += ["s1"] * (n - pairs)
+    return [tile(w, start + i, b, k) for i, (w, k) in enumerate(zip(items, cls))]
 
 
 def build_rubric(slug):
@@ -377,18 +471,16 @@ def build_rubric(slug):
             blocks.append(f'<div class="mosaic mosaic--tall">{video}{tile(g[0], n, b, "s2")}</div>')
             n += 1
             continue
-        cells = mosaic_cells(g, n, b)
-        if len(g) % 2 == 1:
-            lone_big = (len(g) // 2) % 2 == 1
-            cta = (f'<div class="tile tile--cta {"s1" if lone_big else "s2"}" data-wipe><h2 class="t-up">Nous contacter</h2>'
-                   f'<p><a href="tel:{c.tel(c.PHONE)}">{esc(c.PHONE)}</a></p><p><a href="mailto:{c.EMAIL}">{c.EMAIL}</a></p></div>')
-            cells.append(cta)
-        blocks.append(f'<div class="mosaic">{"".join(cells)}</div>')
-        n += len(g)
+        for kind, ws in segments(g):
+            if kind == "plate":
+                blocks.append(plate(ws[0], n, b))
+            else:
+                blocks.append(f'<div class="mosaic">{"".join(mosaic_cells(ws, n, b))}</div>')
+            n += len(ws)
     film = ""
     if slug == "ateliers-de-personnalisation":
         A.file("givenchy-film-1280.jpg"); A.file("givenchy-film-1280.avif")
-        film = f"""<section class="film" aria-labelledby="film-t" data-scene="ink">
+        film = f"""<section class="film" aria-labelledby="film-t">
   <div class="wrap">
     <div class="film__frame" data-film="{c.YOUTUBE_ID}" data-title="{esc(c.YOUTUBE_TITLE)}">
       <button class="film__btn" type="button" aria-describedby="film-n"><picture><source type="image/avif" srcset="{b}assets/media/givenchy-film-1280.avif"><img src="{b}assets/media/givenchy-film-1280.jpg" width="1280" height="720" alt="" loading="lazy" decoding="async"></picture>
@@ -403,28 +495,26 @@ def build_rubric(slug):
         title += f'<span class="hero__kicker hero__kicker--after">{esc(h[1])}</span>'
     title += "</h1>"
     intro = c.intro(slug)
-    lead_words = " ".join(f'<span class="w">{esc(w)}</span>' for w in intro[0].split())
     rest = "".join(f"<p>{esc(p)}</p>" for p in intro[1:])
     nxt = NEXT[slug]
     nimg = A.picture_wide(c.sharp_slides(nxt, 1440, 900, 1)[0], b, "100vh", alt="", cls="next__img")
     main = f"""{hero(slug, title, "")}
 <section class="intro">
   <div class="wrap intro__in">
-    <p class="intro__lit" data-lit>{lead_words}</p>
+    <p class="intro__lead split">{esc(intro[0])}</p>
     <div class="intro__rest" data-reveal>{rest}</div>
   </div>
 </section>
-<section class="works" aria-label="Réalisations" data-scene="paper">
+<section class="works" aria-label="Réalisations">
   <div class="wrap">
     {''.join(blocks)}
   </div>
 </section>
 {film}
-<div class="nx" data-nx data-scene="ink">
+<div class="nx" data-nx>
   <a class="next" href="{link(slug, nxt)}">
-    <span class="next__media" aria-hidden="true" data-nx-media>{nimg}</span>
-    <span class="next__k">Rubrique suivante</span>
-    <span class="next__t">{esc(LABEL[nxt])}</span>
+    <span class="next__media" aria-hidden="true" data-nx-media>{nimg}<span class="hero__shade"></span></span>
+    <span class="next__in wrap"><span class="next__k">Rubrique suivante</span><span class="next__t">{esc(LABEL[nxt])}</span></span>
   </a>
 </div>"""
     page(slug, main, "p-rubric", lightbox=True, end=contact_band(slug))
@@ -464,15 +554,13 @@ def build_contact():
         <div class="form__foot"><button class="btn" type="submit">Envoyer</button><p class="form__note">En cliquant sur Envoyer, votre messagerie s’ouvre avec votre message prêt à partir vers {c.EMAIL}.</p></div>
       </form>
     </div>
+    <section class="team" aria-labelledby="team-t">
+      <h2 class="team__t" id="team-t">{lines("L’équipe")}</h2>
+      {''.join(gs)}
+    </section>
   </div>
 </section>
-<section class="team" aria-labelledby="team-t">
-  <div class="wrap">
-    <h2 class="team__t" id="team-t">{lines("L’équipe")}</h2>
-    {''.join(gs)}
-  </div>
-</section>
-<section class="mapx" aria-labelledby="map-t" data-map="{c.MAPS_EMBED}">
+<section class="mapx" aria-labelledby="map-t" data-map="{c.MAPS_EMBED}" data-mist="ink">
   <div class="wrap mapx__in">
     <h2 class="mapx__k" id="map-t">Plan d’accès</h2>
     <p class="mapx__addr"><span class="split">Agence Cobalt Création</span><br><span class="split">{esc(street)}</span><br><span class="split">{esc(city)}</span></p>
@@ -503,7 +591,7 @@ def build_privacy():
             out.append(f"<p>{esc(bl['text'])}</p>")
     if in_list:
         out.append("</ul>")
-    page(slug, f'<section class="legal"><div class="wrap legal__in">{"".join(out)}</div></section>', "p-legal", over_hero=False)
+    page(slug, f'<section class="legal" data-mist="ink"><div class="wrap legal__in">{"".join(out)}</div></section>', "p-legal", over_hero=False)
 
 
 def main():
