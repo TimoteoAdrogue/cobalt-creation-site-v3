@@ -222,6 +222,7 @@
       figs.forEach((f) => {
         f.classList.toggle("was-on", f.dataset.g === cur);
         f.classList.toggle("is-on", f.dataset.g === k);
+        f.classList.toggle("is-next", +f.dataset.g === +k + 1);
       });
       gestes.forEach((g) => g.classList.toggle("is-on", g.dataset.g === k));
       if (countEl) countEl.textContent = String(+k + 1).padStart(2, "0");

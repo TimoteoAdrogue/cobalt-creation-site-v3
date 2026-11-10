@@ -307,7 +307,7 @@ def build_home():
     techs = [w for w in c.works("creation-d-objet-unique") if c.work_lines(w)]
     media, items = [], []
     for i, w in enumerate(techs):
-        on = ' class="is-on"' if i == 0 else ""
+        on = ' class="is-on"' if i == 0 else ' class="is-next"' if i == 1 else ""
         ar = ratio(w["media"])
         wide = "100vw" if i == len(techs) - 1 else "62vw"      # the last one widens over the screen
         sizes = f"(max-width: 900px) {cover('100vw', '52vh', ar)}, {cover(wide, '100vh', ar)}"
