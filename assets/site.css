@@ -270,7 +270,7 @@ button { font: inherit; color: inherit; }
   .tq.is-pinned .tq__head .dc { font-size: clamp(48px, 5.6vw, 96px); margin-bottom: 26px; }
   .tq.is-pinned .tq__head .lede { max-width: 40ch; }
   .tq.is-pinned .tq__n { grid-column: 1; grid-row: var(--row); padding: 0 var(--gut); opacity: var(--h, 0); }
-  .tq.is-pinned .tq__n button { font-size: clamp(18px, 2.45vh, 24px); line-height: 1.6; opacity: calc(.4 + .6 * var(--l, 0)); transform: translateX(calc(var(--l, 0) * 14px)); }
+  .tq.is-pinned .tq__n button { font-size: clamp(18px, 2.45vh, 24px); line-height: 1.6; opacity: calc(.56 + .44 * var(--l, 0)); transform: translateX(calc(var(--l, 0) * 14px)); }
   .tq.is-pinned .tq__n button::before { content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 12px 0 -18px; border-radius: 50%; background: var(--gold); vertical-align: .2em; opacity: var(--l, 0); }
   .tq.is-pinned .tq__d { grid-column: 1; grid-row: 12; padding: clamp(14px, 2.4vh, 28px) var(--gut) 0; min-height: 11.5em; opacity: var(--o, 1); }
   .tq.is-pinned .tq__item:not(:first-child) .tq__d { --o: 0; visibility: hidden; }
@@ -420,8 +420,9 @@ button { font: inherit; color: inherit; }
   background-image: linear-gradient(100deg, var(--cream) 0 42%, var(--gold-hi) 47%, var(--gold) 50%, rgba(207, 198, 184, .38) 55% 100%);
   background-size: 300% 100%; background-position: 100% 0; background-repeat: no-repeat; }
 .rh__in--film { display: grid; grid-template-columns: minmax(0, 1fr) min(360px, 28vw); column-gap: clamp(32px, 5vw, 80px); }
-.rh__in--film .rh__t, .rh__in--film .rh__intro { grid-column: 1; }
-.rh__film { grid-column: 2; grid-row: 1 / span 2; position: relative; margin: 0; align-self: start; }
+.rh__in--film .rh__t { grid-column: 1 / -1; }
+.rh__in--film .rh__intro { grid-column: 1; }
+.rh__film { grid-column: 2; grid-row: 2; position: relative; margin: clamp(40px, 7vh, 80px) 0 0; align-self: start; }
 .rh__film video { width: 100%; aspect-ratio: 9 / 16; object-fit: cover; background: #111; }
 .rh__film figcaption { margin-top: 12px; font-size: 14px; color: var(--mute); }
 .cs__play { position: absolute; left: 50%; top: 45%; translate: -50% -50%; display: none; border: 1px solid var(--cream); background: rgba(1, 28, 42, .6); color: var(--cream); padding: 10px 14px; cursor: pointer; }

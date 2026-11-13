@@ -102,10 +102,17 @@ def tone(name, crop=None):
     im.thumbnail((400, 400))
     W, H = im.size
     out = []
-    for x0, x1 in ((0, .22), (.72, 1)):
-        band = im.crop((round(x0 * W), 0, round(x1 * W), max(1, round(.14 * H))))
-        mean = sum(band.getdata()) / (band.width * band.height)
-        out.append("light" if mean > 150 else "dark")
+    lum = lambda v: ((v / 255 + .055) / 1.055) ** 2.4 if v > 10 else v / 255 / 12.92
+    ratio = lambda a, b: (max(a, b) + .05) / (min(a, b) + .05)
+    # where the logo and the links fall on the photograph as it is drawn full screen (cover, 110 % tall) at 1440 x 900
+    vw, vh = 1440, 990
+    sc = max(vw / W, vh / H)
+    fx = lambda x: (x + (W * sc - vw) / 2) / (W * sc)
+    fy = lambda y: (y + 45 + (H * sc - vh) / 2) / (H * sc)
+    for x0, x1 in ((fx(40), fx(190)), (fx(1100), fx(1400))):
+        band = im.crop((round(x0 * W), round(fy(10) * H), round(x1 * W), round(fy(66) * H)))
+        L = sum(lum(v) for v in band.getdata()) / (band.width * band.height)
+        out.append("light" if ratio(L, .0348) > ratio(L, .852) else "dark")   # ink #02374F against cream #F3EEE4
     return out
 
 
@@ -410,7 +417,9 @@ def bridge(i12, cls):
     name = mid(i12)
     sw, sh = src_size(name)
     l, r = tone(name)
-    return (f'<div class="bridge {cls}" data-bridge data-warm data-tone-l="{l}" data-tone-r="{r}" aria-hidden="true"><figure class="bridge__f">'
+    # the bridges dissolve into their ground by design (their last fifth is that ground): the motion gates check them
+    # for loading only when they paint flat ([data-flat-ok])
+    return (f'<div class="bridge {cls}" data-bridge data-warm data-tone-l="{l}" data-tone-r="{r}" aria-hidden="true"><figure class="bridge__f" data-flat-ok>'
             f'{pic(name, "", cover("100vw", "116vh", sw / sh), widths=(1280, 1920, 2560, 3200), alt="")}</figure></div>')
 
 
@@ -440,7 +449,8 @@ def shape_of(w):
     ar = sw / sh
     if ar > 2.2:
         return "s"
-    return "l" if min(sw, sh) >= 1500 and .6 <= ar <= 1.7 and not any(k in w["media"] for k in WEAK) else "p"
+    # a lead gives its free columns to its caption: a work the client did not caption is never one
+    return "l" if c.work_lines(w) and min(sw, sh) >= 1500 and .6 <= ar <= 1.7 and not any(k in w["media"] for k in WEAK) else "p"
 
 
 def spreads(ws, b, cell, attrs=""):

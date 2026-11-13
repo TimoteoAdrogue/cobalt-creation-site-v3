@@ -561,7 +561,8 @@
     };
     G.matchMedia().add("(min-width: 901px)", () => {
       tq.classList.add("is-pinned");
-      tqPin = ST.create({ trigger: stage, start: "top top", end: () => "+=" + innerHeight * (TOTAL - 1), pin: true, pinSpacing: true,
+      // one screen of scroll = one unit of the story, so the last unit (TAIL) is the bridge rising over the held stage
+      tqPin = ST.create({ trigger: stage, start: "top top", end: () => "+=" + innerHeight * TOTAL, pin: true, pinSpacing: true,
         invalidateOnRefresh: true, onRefresh: (st) => { fh = stage.offsetHeight; render(st.progress); }, onUpdate: (st) => render(st.progress),
         onToggle: (st) => { window.__tqOn = st.isActive; tb && tb.classList.toggle("is-hidden", st.isActive); } });
       render(0);
