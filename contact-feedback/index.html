@@ -22,7 +22,7 @@
 <link rel="preload" href="../assets/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="../assets/fonts/bodonimoda.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../assets/site.css">
-<script>document.documentElement.classList.add('js')</script>
+<script>document.documentElement.classList.add('js');addEventListener('pagereveal',function(){document.querySelectorAll('img[data-hold]').forEach(function(i){if(i.complete&&i.naturalWidth)i.dataset.ready=1})})</script>
 <script src="../assets/vendor/gsap.min.js" defer></script>
 <script src="../assets/vendor/ScrollTrigger.min.js" defer></script>
 <script src="../assets/vendor/lenis.min.js" defer></script>
@@ -44,7 +44,7 @@
 </nav>
 <main id="contenu">
 <section class="ctx3" aria-labelledby="ct-t">
-  <figure class="ctx3__media" data-tone-l="light" data-tone-r="light"><span class="ctx3__ph" data-drift-hold><picture><source type="image/avif" srcset="../assets/media/v3-08cb192d62d2-800.avif 800w, ../assets/media/v3-08cb192d62d2-1280.avif 1280w, ../assets/media/v3-08cb192d62d2-1920.avif 1920w" sizes="(max-width: 900px) 100vw, max(44vw, calc(110vh * 0.750))"><img class="ctx3__img" src="../assets/media/v3-08cb192d62d2-800.jpg" srcset="../assets/media/v3-08cb192d62d2-800.jpg 800w, ../assets/media/v3-08cb192d62d2-1280.jpg 1280w, ../assets/media/v3-08cb192d62d2-1920.jpg 1920w" sizes="(max-width: 900px) 100vw, max(44vw, calc(110vh * 0.750))" width="1920" height="2560" alt="" loading="eager" decoding="async" fetchpriority="high"></picture></span></figure>
+  <figure class="ctx3__media" data-tone-l="light" data-tone-r="light" style="background-color:#9e9b90"><span class="ctx3__ph" data-drift-hold><picture><source type="image/avif" srcset="../assets/media/v3-08cb192d62d2-800.avif 800w, ../assets/media/v3-08cb192d62d2-1280.avif 1280w, ../assets/media/v3-08cb192d62d2-1920.avif 1920w" sizes="(max-width: 900px) 100vw, max(44vw, calc(110vh * 0.750))"><img class="ctx3__img" src="../assets/media/v3-08cb192d62d2-800.jpg" srcset="../assets/media/v3-08cb192d62d2-800.jpg 800w, ../assets/media/v3-08cb192d62d2-1280.jpg 1280w, ../assets/media/v3-08cb192d62d2-1920.jpg 1920w" sizes="(max-width: 900px) 100vw, max(44vw, calc(110vh * 0.750))" width="1920" height="2560" alt="" loading="eager" decoding="async" data-hold onload="var i=this;(i.decode?i.decode():Promise.resolve()).then(function(){i.dataset.ready=1},function(){i.dataset.ready=1})" onerror="this.dataset.ready=1" fetchpriority="high"></picture></span></figure>
   <div class="ctx3__body" data-tone-l="dark" data-tone-r="dark">
     <h1 id="ct-t" class="d1 split">Nous contacter</h1>
     <div class="ct3__grid">

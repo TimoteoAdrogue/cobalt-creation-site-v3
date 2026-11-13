@@ -116,6 +116,20 @@ def tone(name, crop=None):
     return out
 
 
+def mean_colour(name, crop=None):
+    """The photograph's own average colour: the ground of its frame, so a frame never shows a foreign colour."""
+    im = ImageOps.exif_transpose(Image.open(ROOT / "src-media" / name)).convert("RGB")
+    if crop:
+        W, H = im.size
+        im = im.crop((round(crop[0] * W), round(crop[1] * H), round(crop[2] * W), round(crop[3] * H)))
+    im.thumbnail((64, 64))
+    n = im.width * im.height
+    return "#%02x%02x%02x" % tuple(round(sum(px[k] for px in im.getdata()) / n) for k in range(3))
+
+
+HOLD = ' data-hold onload="var i=this;(i.decode?i.decode():Promise.resolve()).then(function(){i.dataset.ready=1},function(){i.dataset.ready=1})" onerror="this.dataset.ready=1"'
+
+
 # round 2: every rubric opens on its strongest photograph at full light, never graded nor tinted:
 # (source id, wide crop ~16:10, tall crop ~4:5). The previous page's « next rubric » panel shows the same frame.
 OPEN = {
@@ -135,7 +149,7 @@ def opening(slug, b, cls="", eager=False):
     arw, art = fw[-1]["w"] / fw[-1]["h"], ft[-1]["w"] / ft[-1]["h"]
     srcs = lambda fs, k: ", ".join(f"{b}assets/media/{f[k]} {f['w']}w" for f in fs)
     sw, st = cover("100vw", "110vh", arw), cover("100vw", "110vh", art)
-    load = 'loading="eager" fetchpriority="high"' if eager else 'loading="lazy"'
+    load = ('loading="eager" fetchpriority="high"' + HOLD) if eager else 'loading="lazy"'
     k = f' class="{cls}"' if cls else ""
     return (f'<picture><source media="(max-width: 767px)" type="image/avif" srcset="{srcs(ft, "avif")}" sizes="{st}">'
             f'<source media="(max-width: 767px)" srcset="{srcs(ft, "jpg")}" sizes="{st}">'
@@ -146,7 +160,7 @@ def opening(slug, b, cls="", eager=False):
 def opening_tone(slug):
     i12, wide, _ = OPEN[slug]
     l, r = tone(mid(i12), wide)
-    return f'data-tone-l="{l}" data-tone-r="{r}"'
+    return f'data-tone-l="{l}" data-tone-r="{r}" style="background-color:{mean_colour(mid(i12), wide)}"'
 
 
 FINISHES = [("foil", "Marquage à chaud"), ("gravure", "Gravure"), ("emboss", "Embossage"), ("leaf", "Feuille d’or")]
@@ -192,7 +206,7 @@ def head(slug):
 <link rel="preload" href="{b}assets/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="{b}assets/fonts/bodonimoda.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{b}assets/site.css">
-<script>document.documentElement.classList.add('js')</script>
+<script>document.documentElement.classList.add('js');addEventListener('pagereveal',function(){{document.querySelectorAll('img[data-hold]').forEach(function(i){{if(i.complete&&i.naturalWidth)i.dataset.ready=1}})}})</script>
 <script src="{b}assets/vendor/gsap.min.js" defer></script>
 <script src="{b}assets/vendor/ScrollTrigger.min.js" defer></script>
 <script src="{b}assets/vendor/lenis.min.js" defer></script>
@@ -399,7 +413,7 @@ def techniques():
                    f'{pic(name, "", "(max-width: 900px) 84vw, 47vw", widths=(800, 1280, 1980), alt="")}</figure>')
         else:               # the frame is (100vw - index column) x 100vh; the image is 112 % tall (drift slack)
             sizes = f"(max-width: 900px) {cover('100vw', '62vh', sw / sh)}, {cover('58vw', '112vh', sw / sh)}"
-            fig = f'<figure class="tq__f" style="--fp:{fp}">{pic(name, "", sizes, alt="")}</figure>'
+            fig = f'<figure class="tq__f" style="--fp:{fp};background-color:{mean_colour(name)}">{pic(name, "", sizes, alt="")}</figure>'
         cr = f'<p class="tq__cr">{esc(credit)}</p>' if credit else ""
         items.append(f'<li class="tq__item" style="--row:{i + 2}" data-i="{i}">{fig}'
                      f'<h3 class="tq__n"><button type="button" data-tq-go="{i}">{esc(c.work_lines(w)[0])}</button></h3>'
@@ -440,7 +454,7 @@ def run_cell(w, n, slot, b, href, anchor=False):
         + (f'<span class="cap__d">{esc(c.work_desc(w))}</span>' if slot == "lead" and c.work_desc(w) else "") + "</figcaption>"
     label = c.work_alt(w) or f"Réalisation {n}"
     idattr = f' id="piece-{n}"' if anchor else ""
-    return (f'<figure class="rl rl--{slot}"{idattr} style="--ar:{ar:.3f};--cap:{cap}px"><a class="rl__a" href="{href}" data-view=\'{esc(item_data(w, b, n))}\' aria-label="Agrandir : {esc(label)}">'
+    return (f'<figure class="rl rl--{slot}"{idattr} style="--ar:{ar:.3f};--cap:{cap}px"><a class="rl__a" style="background-color:{mean_colour(w["media"])}" href="{href}" data-view=\'{esc(item_data(w, b, n))}\' aria-label="Agrandir : {esc(label)}">'
             f'{pic(w["media"], b, sizes, widths=RUN_W, alt=label)}</a>{cap_html if lines or c.work_desc(w) else ""}</figure>')
 
 
@@ -634,11 +648,11 @@ def build_contact():
     # light: drawn at most 1485 device px from 2954
     name = mid("08cb192d62d2")
     sw, sh = src_size(name)
-    cpic = pic(name, b, f"(max-width: 900px) 100vw, {cover('44vw', '110vh', sw / sh)}", widths=(800, 1280, 1920), alt="", cls="ctx3__img", eager=True, priority=True)
+    cpic = pic(name, b, f"(max-width: 900px) 100vw, {cover('44vw', '110vh', sw / sh)}", widths=(800, 1280, 1920), alt="", cls="ctx3__img", eager=True, priority=True).replace(' decoding="async"', ' decoding="async"' + HOLD)
     l, r = tone(name)
     street, city = c.ADDRESS_LINE.split(" - ")
     main = f"""<section class="ctx3" aria-labelledby="ct-t">
-  <figure class="ctx3__media" data-tone-l="{l}" data-tone-r="{l}"><span class="ctx3__ph" data-drift-hold>{cpic}</span></figure>
+  <figure class="ctx3__media" data-tone-l="{l}" data-tone-r="{l}" style="background-color:{mean_colour(name)}"><span class="ctx3__ph" data-drift-hold>{cpic}</span></figure>
   <div class="ctx3__body" data-tone-l="dark" data-tone-r="dark">
     <h1 id="ct-t" class="d1 split">Nous contacter</h1>
     <div class="ct3__grid">

@@ -400,10 +400,13 @@ button { font: inherit; color: inherit; }
 /* ---------- rubric pages: the opening at full light, held; an ink sheet carrying the title rises over it, then the
    catalogue's paper rises over the held sheet (two sheets laid down, one input: the scroll itself) ---------- */
 .rh { position: relative; }
-.rh__fig { position: sticky; top: 0; z-index: 0; height: 100vh; height: 100svh; min-height: 560px; margin: 0; overflow: hidden; background: #111; }
+.rh__fig { position: sticky; top: 0; z-index: 0; height: 100vh; height: 100svh; min-height: 560px; margin: 0; overflow: hidden; background-color: #111; }
 .rh__ph, .next3__media, .ctx3__ph { position: absolute; left: 0; right: 0; top: -5%; height: 110%; display: block; will-change: transform; }
 .rh__ph img, .next3__img, .ctx3__img { width: 100%; height: 100%; object-fit: cover; }
 .rh__ph { view-transition-name: rh; }
+/* the first screen's photograph shows once decoded, over a ground of its own average colour (never half drawn) */
+.js img[data-hold] { transition: opacity .6s var(--settle); }
+.js img[data-hold]:not([data-ready]) { opacity: 0; }
 .rh__sheet { position: relative; z-index: 1; min-height: 100vh; min-height: 100svh; margin-top: -30svh;
   background-color: var(--ground); background-image: url("media/leather-soft.jpg"); background-size: 420px 420px; background-blend-mode: soft-light; }
 .js .rh__sheet { position: sticky; top: var(--st, 0px); }
@@ -494,7 +497,7 @@ button { font: inherit; color: inherit; }
 
 /* contact: an artisan at work beside the details, the form and the team (one column, the photograph held beside it) */
 .ctx3 { display: grid; grid-template-columns: minmax(0, 44fr) minmax(0, 56fr); }
-.ctx3__media { position: sticky; top: 0; height: 100vh; height: 100dvh; margin: 0; overflow: hidden; background: #111; }
+.ctx3__media { position: sticky; top: 0; height: 100vh; height: 100dvh; margin: 0; overflow: hidden; background-color: #111; }
 .ctx3__body { padding: calc(76px + clamp(40px, 7vh, 96px)) clamp(28px, 6vw, 112px) clamp(72px, 11vh, 140px); }
 .ctx3 .ct3__grid { grid-template-columns: 1fr; gap: clamp(48px, 7vh, 80px); margin-top: clamp(40px, 6vh, 72px); }
 .ctx3 .ways { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px 32px; }
