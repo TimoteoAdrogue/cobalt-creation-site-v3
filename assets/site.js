@@ -1,5 +1,5 @@
 /* Cobalt Création, V3 « Atelier ».
-   GSAP + ScrollTrigger (self-hosted) for the scroll story; plain DOM for the rest.
+   GSAP + ScrollTrigger (self-hosted) for the hero's story and the techniques' pin; one scroll loop for the rest.
    Reduced motion or no GSAP: the hero is not pinned, the three sentences sit in the page, nothing moves on its own. */
 (() => {
   "use strict";
@@ -34,20 +34,13 @@
 
   /* ---------- top bar ---------- */
   const tb = $("[data-topbar]");
-  if (tb && io) {
-    const s = document.createElement("div");
-    s.setAttribute("aria-hidden", "true");
-    s.style.cssText = "position:absolute;top:40px;left:0;width:1px;height:1px;pointer-events:none";
-    document.body.prepend(s);
-    new IntersectionObserver(([e]) => tb.classList.toggle("is-solid", !e.isIntersecting && e.boundingClientRect.top < 0)).observe(s);
-  }
   // the bar steps aside while reading down and returns on the way up
   let refreshing = false;
   if (G) { window.ScrollTrigger.addEventListener("refreshInit", () => { refreshing = true; }); window.ScrollTrigger.addEventListener("refresh", () => { requestAnimationFrame(() => { refreshing = false; }); }); }
   if (tb && G) {
     window.ScrollTrigger.create({ start: 0, end: "max", onUpdate: (st) => {
       if (refreshing) return;
-      tb.classList.toggle("is-hidden", st.direction === 1 && st.scroll() > innerHeight * 0.8 && !root.style.overflow && !tb.contains(document.activeElement));
+      tb.classList.toggle("is-hidden", !!window.__tqOn || (st.direction === 1 && st.scroll() > innerHeight * 0.8 && !root.style.overflow && !tb.contains(document.activeElement)));
     } });
     tb.addEventListener("focusin", () => tb.classList.remove("is-hidden"));
   }
@@ -61,7 +54,7 @@
       ov.classList.toggle("is-open", open);
       root.style.overflow = open ? "hidden" : "";
       hold(open);
-      if (open) tb?.classList.remove("is-hidden");
+      if (open) tb?.classList.remove("is-hidden", "tb--ink-l", "tb--ink-r");
       label.textContent = open ? "Fermer" : "Menu";
       if (open) setTimeout(() => $("a", ov)?.focus(), 80);
     };
@@ -71,7 +64,7 @@
 
   /* ---------- reveals: settle-in, split headings, crew, contact-sheet cells ---------- */
   $$("[data-crew] li, [data-crew] h3").forEach((el, i) => el.style.setProperty("--i", i % 14));
-  const revealEls = $$("[data-settle], .split, [data-crew], .rl");
+  const revealEls = $$("[data-settle], .split, [data-crew]");
   if (io && !reduce) {
     const o = new IntersectionObserver((es) => {
       for (const e of es) if (e.isIntersecting || e.boundingClientRect.top <= 0) { e.target.classList.add("is-in"); o.unobserve(e.target); }
@@ -84,12 +77,6 @@
       left.forEach((el) => { if (!el.closest("[hidden]") && el.getBoundingClientRect().top < innerHeight) { el.classList.add("is-in"); o.unobserve(el); } });
     }, 500);
   } else revealEls.forEach((el) => el.classList.add("is-in"));
-
-  const boardEl = $("[data-board]");
-  if (boardEl) {
-    if (io) new IntersectionObserver(([e], o) => { if (e.isIntersecting) { boardEl.classList.add("is-near"); o.disconnect(); } }, { rootMargin: "150% 0px" }).observe(boardEl);
-    else boardEl.classList.add("is-near");
-  }
 
   /* ---------- the live monogram (vector SVG: sharp at any size) ---------- */
   const mono = $("[data-mono]");
@@ -166,7 +153,7 @@
       stamp();
     }));
     // after a page transition the stamp waits for the lid to open, so it is seen
-    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => stamp(), root.classList.contains("pt-in") ? 700 : 120));
+    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => stamp(), 120));
 
     // light follows a fine pointer, or sweeps slowly on its own, only while the hero is on screen
     if (!reduce && light) {
@@ -209,45 +196,12 @@
     }
   }
 
-  /* ---------- signature techniques: the image wipes in as the text arrives ---------- */
-  const gestes = $$(".geste");
-  const gx = $("[data-gx]");
-  const countEl = $("[data-g-count]"), descEl = $("[data-g-desc]");
-  let onGeste = () => {};
-  if (gestes.length) {
-    const figs = $$(".gestes__media figure");
-    let cur = "0";
-    onGeste = (k) => {
-      if (k === cur) return;
-      figs.forEach((f) => {
-        f.classList.toggle("was-on", f.dataset.g === cur);
-        f.classList.toggle("is-on", f.dataset.g === k);
-        f.classList.toggle("is-next", +f.dataset.g === +k + 1);
-      });
-      gestes.forEach((g) => g.classList.toggle("is-on", g.dataset.g === k));
-      if (countEl) countEl.textContent = String(+k + 1).padStart(2, "0");
-      if (descEl) {
-        const t = $(`.geste[data-g="${k}"] p`)?.textContent || "";
-        descEl.classList.add("is-swap");
-        clearTimeout(onGeste.t); onGeste.t = setTimeout(() => { descEl.textContent = t; descEl.classList.remove("is-swap"); }, 180);
-      }
-      cur = k;
-    };
-    if (io) {
-      const o = new IntersectionObserver((es) => {
-        if (gx?.classList.contains("is-pinned")) return;
-        for (const e of es) if (e.isIntersecting) onGeste(e.target.dataset.g);
-      }, { rootMargin: "-45% 0px -45% 0px" });
-      gestes.forEach((g) => o.observe(g));
-    }
-  }
-
   /* ---------- réalisations: one run per rubric, filter in the heading ---------- */
   const grid = $("[data-reals]");
   if (grid) {
     const tabs = $$(".reals__tabs button");
     const more = $("[data-reals-link]"), moreLabel = $("[data-reals-label]");
-    const imgsOf = (f) => $$(`.rl[data-p="${f}"] img`, grid);
+    const imgsOf = (f) => $$(`.sp[data-p="${f}"] img`, grid);
     const warm = (f) => imgsOf(f).forEach((i) => { i.loading = "eager"; });   // on intent: hover or focus of a tab
     tabs.forEach((btn) => {
       btn.addEventListener("pointerenter", () => warm(btn.dataset.f), { passive: true });
@@ -259,36 +213,14 @@
         warm(f);
         const ready = Promise.race([Promise.all(imgsOf(f).slice(0, 4).map((i) => i.decode().catch(() => {}))), new Promise((r) => setTimeout(r, 700))]);
         if (!reduce) { grid.classList.add("is-out"); await Promise.all([ready, new Promise((r) => setTimeout(r, 340))]); }
-        $$(".rl", grid).forEach((fig) => { fig.hidden = fig.dataset.p !== f; fig.classList.remove("is-in"); });
+        $$(".sp", grid).forEach((row) => { row.hidden = row.dataset.p !== f; });
         more.href = f + "/";
         moreLabel.textContent = btn.textContent;
         grid.classList.remove("is-out");
-        requestAnimationFrame(() => $$(".rl:not([hidden])", grid).forEach((fig, k) => setTimeout(() => fig.classList.add("is-in"), 60 + k * 70)));
         window.ScrollTrigger?.refresh();
       });
     });
   }
-  // the lamp: a warm light follows the pointer over each photograph
-  if (fine && !reduce) document.addEventListener("pointermove", (e) => {
-    const a = e.target.closest && e.target.closest(".rl > a");
-    if (!a) return;
-    const r = a.getBoundingClientRect();
-    a.style.setProperty("--mx", ((e.clientX - r.left) / r.width * 100).toFixed(1) + "%");
-    a.style.setProperty("--my", ((e.clientY - r.top) / r.height * 100).toFixed(1) + "%");
-  }, { passive: true });
-
-  /* ---------- book: tilt toward the pointer ---------- */
-  $$("[data-tilt]").forEach((el) => {
-    if (reduce || !fine) return;
-    el.addEventListener("pointermove", (e) => {
-      const r = el.getBoundingClientRect();
-      const px = (e.clientX - r.left) / r.width - 0.5, py = (e.clientY - r.top) / r.height - 0.5;
-      el.style.setProperty("--ry", (px * 14).toFixed(2));
-      el.style.setProperty("--rx", (-py * 9).toFixed(2));
-    });
-    el.addEventListener("pointerleave", () => { el.style.removeProperty("--ry"); el.style.removeProperty("--rx"); });
-  });
-
   /* ---------- scroll story (GSAP) ---------- */
   if (G) {
     const ST = window.ScrollTrigger;
@@ -314,45 +246,6 @@
       tl.fromTo(".hero", { "--fade": 0 }, { "--fade": 1, duration: 0.16 }, 0.82);
     }
 
-    const mm = G.matchMedia();
-    mm.add("(min-width: 901px)", () => {
-      // signature techniques: the section holds still and becomes an index. Each technique opens its photograph
-      // from the slit; at the end the photograph widens over the whole screen, and as the page moves on it dissolves
-      // from the bottom up while the works are already rising underneath (the exit overlaps the next entrance).
-      if (gx && gestes.length) {
-        gx.classList.add("is-pinned");
-        const N = gestes.length, per = 0.3, tail = 0.7, share = (N * per) / (N * per + tail);
-        const media = $(".gestes__media", gx), body = $(".gestes__body", gx);
-        const pinned = G.timeline({ scrollTrigger: { trigger: body, start: "top top", end: () => "+=" + innerHeight * (N * per + tail), pin: true, scrub: 0.5, invalidateOnRefresh: true,
-          onUpdate: (st) => onGeste(String(Math.min(N - 1, Math.floor((st.progress / share) * N)))) } })
-          .fromTo(media, { width: "62%" }, { width: "100%", ease: "power2.inOut", duration: 1 - share }, share)
-          .fromTo(".gestes__listwrap", { "--lw": 1 }, { "--lw": 0, ease: "power1.in", duration: (1 - share) * 0.6 }, share)   // a variable, not an inline opacity left at 0
-          .fromTo("[data-g-veil]", { opacity: 0 }, { opacity: 0.5, ease: "none", duration: 1 - share }, share);
-        G.fromTo(body, { "--f": 1 }, { "--f": 0, ease: "none", scrollTrigger: { trigger: body, start: "top bottom", end: "top top", scrub: true } });
-        G.fromTo(body, { "--roll": 0 }, { "--roll": 1, ease: "none", scrollTrigger: { trigger: body,
-          start: () => pinned.scrollTrigger.end, end: () => pinned.scrollTrigger.end + innerHeight * 0.8, scrub: 0.5, invalidateOnRefresh: true } });
-        return () => { gx.classList.remove("is-pinned"); onGeste("0"); };
-      }
-    });
-
-    // the gold board: the light comes up on the leaf as it arrives (brightness, never a mix of gold and ink)
-    const board = $("[data-board]");
-    if (board) G.fromTo(board, { "--lit": 0.22 }, { "--lit": 1, ease: "power1.out", scrollTrigger: { trigger: board, start: "top 95%", end: "center 55%", scrub: true } });
-    // logo wall: the marks come forward out of depth, scattered, and settle into the grid
-    const wallItems = $$("[data-wall] li");
-    const deep = innerWidth > 900;   // no z-depth on phones: it reads poorly at 390 px
-    if (wallItems.length) G.fromTo(wallItems, { z: () => deep ? -400 - Math.random() * 1400 : 0, y: () => (Math.random() - 0.5) * (deep ? 120 : 60), opacity: 0 },
-      { z: 0, y: 0, opacity: 1, ease: "power2.out", stagger: { amount: 0.5, from: "random" },
-        scrollTrigger: { trigger: "[data-wall]", start: "top bottom", end: "center 58%", scrub: 0.8 } });
-
-    // the book turns toward the reader while a gold light crosses its cover
-    const book = $("[data-book3]");
-    if (book) G.fromTo(book, { rotateY: -40, rotateX: 10, y: 80 }, { rotateY: -8, rotateX: 0, y: -30, ease: "none",
-      scrollTrigger: { trigger: "[data-book3-sec]", start: "top bottom", end: "bottom top", scrub: true } });
-    const sheen = $("[data-sheen]");
-    if (sheen) G.fromTo(sheen, { backgroundPosition: "100% 0%" }, { backgroundPosition: "0% 0%", ease: "none",
-      scrollTrigger: { trigger: "[data-book3-sec]", start: "top 75%", end: "bottom 25%", scrub: true } });
-
     // rubric intro: a gold light passes through the first paragraph
     $$("[data-lightp]").forEach((pEl) => {
       pEl.classList.add("is-lightable");
@@ -360,101 +253,42 @@
         scrollTrigger: { trigger: pEl, start: "top 88%", end: "bottom 42%", scrub: true } });
     });
 
-    // next rubric: the next page's opening frame, opening from an 18 % band as the panel rises (title set from the first pixel)
-    const nx = $("[data-nx]");
-    if (nx) {
-      const media = $("[data-nx-media]", nx), img = $("img", media);
-      G.timeline({ scrollTrigger: { trigger: nx, start: "top 96%", end: "top top", scrub: 0.6 } })
-        .fromTo(media, { clipPath: "inset(18% 0% 18% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", ease: "power2.inOut", duration: 1 }, 0)
-        .fromTo(img, { scale: 1.06 }, { scale: 1, ease: "none", duration: 1 }, 0)
-        .fromTo($(".next3__t", nx), { y: 40 }, { y: 0, ease: "power2.out", duration: 0.7 }, 0.2);
-    }
     // the end panel's call to contact rises with the scroll, like any chapter (no lift-off: no edge crosses its type)
     const endIn = $("[data-end-in]");
     if (endIn) G.fromTo(endIn, { y: 70, opacity: 0.4 }, { y: 0, opacity: 1, ease: "none", scrollTrigger: { trigger: "[data-end]", start: "top bottom", end: "top 35%", scrub: true } });
 
-    // rubric opening image: settles in, then drifts as the page moves on
-    const rh = $("[data-rh]");
-    if (rh) {
-      const img = $("img", rh);
-      if (!root.classList.contains("pt-nx")) G.fromTo(img, { scale: 1.06 }, { scale: 1, duration: 2.2, ease: "power3.out", delay: root.classList.contains("pt-in") ? 0.5 : 0 });
-      G.to(img, { yPercent: 12, ease: "none", scrollTrigger: { trigger: rh, start: "top top", end: "bottom top", scrub: true } });
-      G.to($(".rh__title", rh), { yPercent: -40, opacity: 0.2, ease: "none", scrollTrigger: { trigger: rh, start: "top top", end: "bottom top", scrub: true } });
-    }
-
-    // scenes: main's ground flows from ink to deep ink as the sections take over (they have no ground of their own,
-    // so no edge ever shows), each section rises in a little behind the scroll and recedes as the next one arrives,
-    // and the ground deepens to the end panel's colour before the page lifts off it
-    const mainEl = $("main");
-    if (mainEl) {
-      const RGB = { ground: [2, 55, 79], deep: [1, 38, 56], deeper: [1, 28, 42] };
-      const scenes = $$("main > section").map((el) => ({ el, tone: el.classList.contains("sec--deep") ? RGB.deep : RGB.ground, moves: el.classList.contains("sec") }));
-      const hasEnd = !!$("[data-end]");
-      const mix = (a, b, k) => a.map((v, j) => v + (b[j] - v) * k);
-      const clamp = (v) => Math.min(1, Math.max(0, v));
-      let geo = [], mainEnd = 0, col = "";
-      // positions are measured with the scene transforms removed, after ScrollTrigger has placed its pins
-      ST.addEventListener("refreshInit", () => scenes.forEach((s) => { s.el.style.transform = s.el.style.opacity = ""; s.t = s.o = ""; }));
-      const measure = () => {
-        const y = scrollY;
-        geo = scenes.map((s) => { const r = s.el.getBoundingClientRect(); return [r.top + y, r.bottom + y]; });
-        mainEnd = mainEl.getBoundingClientRect().bottom + y;
-      };
+    // the ground deepens from ink to the end panel's colour before the footer, so no edge shows there
+    const mainEl = $("main"), endEl = $("[data-end]");
+    if (mainEl && endEl) {
+      const A = [2, 55, 79], B = [1, 28, 42];
+      let col = "";
       const paint = () => {
-        const vh = innerHeight, y = scrollY;
-        let c = scenes[0]?.tone || RGB.ground;
-        scenes.forEach((s, i) => {
-          const top = geo[i][0] - y, bottom = geo[i][1] - y;
-          if (i) c = mix(c, s.tone, clamp((vh * 0.85 - top) / (vh * 0.55)));
-          if (!s.moves || s.el.classList.contains("is-pinned")) return;   // a pinned section must keep no transform
-          const under = scenes[i - 1]?.el.classList.contains("is-pinned");  // it rises under the pinned exit: no lag
-          const enter = under ? 1 : clamp((vh - top) / (vh * 0.7)), leave = clamp((vh * 0.55 - bottom) / (vh * 0.55));
-          const t = `translate3d(0,${((1 - enter - leave) * vh * 0.09).toFixed(1)}px,0)`, o = (1 - leave * 0.7).toFixed(3);
-          if (s.t !== t) { s.el.style.transform = s.t = t; }
-          if (s.o !== o) { s.el.style.opacity = s.o = o; }
-        });
-        if (hasEnd) c = mix(c, RGB.deeper, clamp((vh * 1.5 - (mainEnd - y)) / (vh * 0.5)));
-        const css = `rgb(${c.map(Math.round).join(",")})`;
-        if (css !== col) { mainEl.style.backgroundColor = col = css; mainEl.style.setProperty("--g", css); }
+        const k = Math.min(1, Math.max(0, (innerHeight * 1.5 - endEl.getBoundingClientRect().top) / (innerHeight * 0.5)));
+        const css = `rgb(${A.map((v, j) => Math.round(v + (B[j] - v) * k)).join(",")})`;
+        if (css !== col) mainEl.style.backgroundColor = col = css;
       };
-      ST.addEventListener("refresh", () => { measure(); paint(); });
       addEventListener("scroll", paint, { passive: true });
-      measure(); paint();
+      ST.addEventListener("refresh", paint);
+      paint();
     }
 
     addEventListener("load", () => ST.refresh());
     document.fonts?.ready.then(() => ST.refresh());
   }
 
-  /* ---------- page transition: a gold cut runs across and the page closes onto it; the next page opens (CSS) ---------- */
-  if (!reduce) {
-    document.addEventListener("click", (e) => {
-      const a = e.target.closest && e.target.closest("a[href]");
-      if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-      if ((a.target && a.target !== "_self") || a.hasAttribute("download")) return;
-      const url = new URL(a.href, location.href);
-      if (url.origin !== location.origin || !url.protocol.startsWith("http")) return;
-      if (url.pathname === location.pathname && url.search === location.search) return;   // same page: anchors, works
-      e.preventDefault();
-      if (a.hasAttribute("data-next")) {   // the panel is the next page's first frame: bring it whole, then hand over
-        try { sessionStorage.setItem("cc-pt", "nx"); } catch (err) {}
-        const off = Math.abs(a.getBoundingClientRect().top);
-        if (off > 2) lenis ? lenis.scrollTo(a, { duration: 0.6 }) : a.scrollIntoView({ behavior: "smooth" });
-        setTimeout(() => { location.href = url.href; }, off > 2 ? 640 : 60);
-        return;
-      }
-      try { sessionStorage.setItem("cc-pt", "1"); } catch (err) {}
-      const pt = document.createElement("div");
-      pt.className = "pt"; pt.setAttribute("aria-hidden", "true");
-      pt.innerHTML = '<i class="pt__lid"></i><i class="pt__cut"></i>';
-      document.body.appendChild(pt);
-      setTimeout(() => { location.href = url.href; }, 640);
-    });
-    // back/forward restores the page from memory with the page still closed
-    addEventListener("pageshow", (e) => { if (e.persisted) $$(".pt").forEach((x) => x.remove()); });
-  }
+  /* ---------- page transition: cross-document view transitions (CSS); the next-rubric panel's photograph becomes the
+     next page's opening. Any other link leaves the opening unnamed, so nothing flies in from off screen. ---------- */
+  let viaNext = false;
+  document.addEventListener("click", (e) => { viaNext = !!(e.target.closest && e.target.closest("[data-next]")); }, true);
+  addEventListener("pageswap", (e) => {
+    if (!e.viewTransition) return;
+    const own = $(".rh__ph"), nxt = $("[data-next] .next3__media");
+    if (own) own.style.viewTransitionName = "none";
+    if (nxt && viaNext) nxt.style.viewTransitionName = "rh";
+  });
+  addEventListener("pageshow", () => { const own = $(".rh__ph"), nxt = $("[data-next] .next3__media"); if (own) own.style.viewTransitionName = ""; if (nxt) nxt.style.viewTransitionName = ""; });
 
-  /* ---------- viewer ---------- */
+  /* ---------- viewer: the picture opens from its tile, slides in the direction asked, follows the finger ---------- */
   let avif = false;
   const probe = new Image();
   probe.onload = () => { avif = probe.width > 0; };
@@ -464,73 +298,122 @@
   const all = $$("[data-view]");
   if (vw && all.length && typeof vw.showModal === "function") {
     const hashes = document.body.classList.contains("p-rubric");
+    const stage = $(".vw__stage", vw), meta = $(".vw__meta", vw);
     const img = $(".vw__stage img", vw), src = $(".vw__stage source", vw);
     const count = $(".vw__count", vw), t = $(".vw__t", vw), s = $(".vw__s", vw), d = $(".vw__d", vw);
-    let items = [], cur = 0, pushed = false, opener = null;
+    const EASE = "cubic-bezier(.2, .75, .25, 1)";
+    const anim = (el, kf, ms, delay = 0) => (reduce || !el.animate ? null : el.animate(kf, { duration: ms, delay, easing: EASE, fill: "backwards" }));
+    let items = [], cur = 0, pushed = false, opener = null, busy = 0;
     const visible = () => all.filter((a) => !a.closest("[hidden]"));
     const data = (a) => JSON.parse(a.dataset.view);
-    const preload = (k) => { const it = data(items[(k + items.length) % items.length]); const p = new Image(); p.src = avif ? it.avif : it.jpg; };
+    const fileOf = (it) => (avif ? it.avif : it.jpg);
+    const preload = (k) => { const it = data(items[(k + items.length) % items.length]); const p = new Image(); p.src = fileOf(it); };
+    // the picture shown first: the tile's own file if it is there, else the large one, always decoded before it shows
+    const firstOf = (k) => { const ti = $("img", items[k]); return ti && ti.complete && ti.naturalWidth ? ti.currentSrc : fileOf(data(items[k])); };
+    const decoded = (url) => { const L = new Image(); L.src = url; return Promise.race([(L.decode ? L.decode() : Promise.resolve()).catch(() => {}), new Promise((r) => setTimeout(r, 900))]); };
     let want = "";
-    const show = (k) => {
-      cur = (k + items.length) % items.length;
-      const it = data(items[cur]);
-      // the tile's own photograph shows at once; the large file replaces it once decoded (never a blank frame)
-      const tile = $("img", items[cur])?.currentSrc;
-      const large = avif ? it.avif : it.jpg;
+    const fill = (k) => {
+      const it = data(items[k]);
+      const large = fileOf(it);
       want = large;
-      if (tile) { src.srcset = ""; img.src = tile; }
-      img.alt = it.alt;
-      const L = new Image(); L.src = large;
-      (L.decode ? L.decode() : Promise.resolve()).catch(() => {}).then(() => { if (want === large) { src.srcset = it.avif; img.src = it.jpg; } });
-      count.textContent = `${cur + 1} / ${items.length}`;
+      src.srcset = ""; img.src = firstOf(k); img.alt = it.alt;
+      decoded(large).then(() => { if (want === large) { src.srcset = it.avif; img.src = it.jpg; } });
+      count.textContent = `${k + 1} / ${items.length}`;
       t.textContent = it.t; s.textContent = it.s; d.textContent = it.d;
       t.hidden = !it.t; s.hidden = !it.s; d.hidden = !it.d;
-      preload(cur + 1); preload(cur - 1);
+      preload(k + 1); preload(k - 1);
       if (hashes) { const h = `#piece-${it.n}`; if (location.hash !== h) history.replaceState(history.state, "", h); }
+    };
+    const show = async (k, dir = 0) => {
+      const n = (k + items.length) % items.length;
+      if (!dir) { cur = n; fill(n); return; }
+      const job = ++busy;
+      await decoded(firstOf(n));
+      if (job !== busy || !vw.open) return;
+      // the outgoing picture leaves toward the side it was pushed, the incoming one arrives from the other
+      if (!reduce) {
+        const r = img.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+        const ghost = img.cloneNode();
+        ghost.className = "vw__ghost";
+        ghost.style.cssText = `left:${r.left - sr.left}px;top:${r.top - sr.top}px;width:${r.width}px;height:${r.height}px;transform:${img.style.transform || "none"}`;
+        stage.appendChild(ghost);
+        const a = ghost.animate([{ transform: ghost.style.transform, opacity: 1 }, { transform: `translateX(${-dir * 8}%)`, opacity: 0 }], { duration: 420, easing: EASE, fill: "forwards" });
+        a.onfinish = () => ghost.remove();
+      }
+      img.style.transform = "";
+      cur = n; fill(n);
+      anim(img, [{ transform: `translateX(${dir * 8}%)`, opacity: 0 }, { transform: "none", opacity: 1 }], 420, 60);
+      anim(meta, [{ opacity: 0 }, { opacity: 1 }], 360, 120);
     };
     const open = (a, fromHistory = false) => {
       items = visible();
       opener = a;
-      if (!vw.open) {
+      const first = !vw.open;
+      if (first) {
         if (!fromHistory) { history.pushState({ vw: true }, "", hashes ? `#piece-${data(a).n}` : location.href); pushed = true; }
         vw.showModal();
         root.style.overflow = "hidden";
         hold(true);
       }
-      show(items.indexOf(a));
-      $(".vw__close", vw).focus();
+      cur = items.indexOf(a);
+      fill(cur);
+      $(".vw__close", vw).focus({ preventScroll: true });
+      if (!first || reduce) return;
+      // open from the tile: the picture travels from the tile's place and size to the stage (the tile is hidden meanwhile)
+      const from = a.getBoundingClientRect();
+      const tileImg = $("img", a);
+      if (tileImg) tileImg.style.visibility = "hidden";
+      anim(vw, [{ backgroundColor: "rgba(234, 231, 220, 0)" }, { backgroundColor: "rgb(234, 231, 220)" }], 320);
+      anim(meta, [{ opacity: 0 }, { opacity: 1 }], 380, 260);
+      requestAnimationFrame(() => {
+        const to = img.getBoundingClientRect();
+        if (to.width && from.width) anim(img, [{ transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})` }, { transform: "none" }], 560);
+        setTimeout(() => { if (tileImg) tileImg.style.visibility = ""; }, 600);
+      });
     };
     const close = (viaHistory = false) => {
       if (!vw.open) return;
-      vw.close();
-      root.style.overflow = "";
-      hold(false);
+      const done = () => {
+        vw.close();
+        root.style.overflow = "";
+        hold(false);
+        (items[cur] || opener)?.focus({ preventScroll: true });
+      };
+      const a = anim(vw, [{ opacity: 1 }, { opacity: 0 }], 220);
+      if (a) { a.effect.updateTiming({ fill: "forwards" }); a.onfinish = () => { done(); a.cancel(); }; } else done();
       if (!viaHistory && pushed) { pushed = false; history.back(); }
       else if (!viaHistory && hashes) history.replaceState(null, "", location.pathname + location.search);
-      (items[cur] || opener)?.focus({ preventScroll: true });
     };
     all.forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); open(a); }));
-    $(".vw__prev", vw).addEventListener("click", () => show(cur - 1));
-    $(".vw__next", vw).addEventListener("click", () => show(cur + 1));
+    $(".vw__prev", vw).addEventListener("click", () => show(cur - 1, -1));
+    $(".vw__next", vw).addEventListener("click", () => show(cur + 1, 1));
     $(".vw__close", vw).addEventListener("click", () => close());
     vw.addEventListener("cancel", (e) => { e.preventDefault(); close(); });
     vw.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowRight") { e.preventDefault(); show(cur + 1); }
-      if (e.key === "ArrowLeft") { e.preventDefault(); show(cur - 1); }
+      if (e.key === "ArrowRight") { e.preventDefault(); show(cur + 1, 1); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); show(cur - 1, -1); }
     });
     addEventListener("popstate", () => {
       const m = hashes && location.hash.match(/^#piece-(\d+)$/);
       if (m) { const a = all.find((x) => data(x).n === +m[1]); if (a) { open(a, true); return; } }
       if (vw.open) { pushed = false; close(true); }
     });
-    const stage = $(".vw__stage", vw);
-    let sx = 0, sy = 0, sp = null;
-    stage.addEventListener("pointerdown", (e) => { sp = e.pointerId; sx = e.clientX; sy = e.clientY; });
-    stage.addEventListener("pointerup", (e) => {
-      if (e.pointerId !== sp) return; sp = null;
-      const dx = e.clientX - sx, dy = e.clientY - sy;
-      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) show(cur + (dx < 0 ? 1 : -1));
+    // the picture follows the finger, then goes on or springs back
+    let sx = 0, sy = 0, sp = null, dx = 0;
+    stage.addEventListener("pointerdown", (e) => { sp = e.pointerId; sx = e.clientX; sy = e.clientY; dx = 0; });
+    stage.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== sp || reduce) return;
+      dx = e.clientX - sx;
+      if (Math.abs(dx) > Math.abs(e.clientY - sy)) img.style.transform = `translateX(${dx}px)`;
     });
+    const release = (e) => {
+      if (e.pointerId !== sp) return; sp = null;
+      const ddx = e.clientX - sx, ddy = e.clientY - sy;
+      if (Math.abs(ddx) > 50 && Math.abs(ddx) > Math.abs(ddy)) show(cur + (ddx < 0 ? 1 : -1), ddx < 0 ? 1 : -1);
+      else if (img.style.transform) { anim(img, [{ transform: img.style.transform }, { transform: "none" }], 320); img.style.transform = ""; }
+    };
+    stage.addEventListener("pointerup", release);
+    stage.addEventListener("pointercancel", release);
     if (hashes) {
       const m = location.hash.match(/^#piece-(\d+)$/);
       if (m) { const a = all.find((x) => data(x).n === +m[1]); if (a) { history.replaceState(null, "", location.pathname + location.search); open(a); } }
@@ -539,7 +422,7 @@
 
   /* ---------- film cell: muted loop while on screen ---------- */
   $$("video[data-autoplay]").forEach((v) => {
-    const fig = v.closest(".cs");
+    const fig = v.closest("figure");
     const manual = () => {
       fig.classList.add("is-manual");
       $(".cs__play", fig)?.addEventListener("click", (e) => { e.currentTarget.remove(); fig.classList.remove("is-manual"); v.controls = true; v.play().catch(() => {}); }, { once: true });
@@ -603,4 +486,173 @@
       if (note) note.textContent = `Votre messagerie vient de s’ouvrir avec votre message. Si rien ne s’est passé, écrivez-nous directement à ${form.dataset.mailto}.`;
     });
   });
+  /* ======================= round 2 =======================
+     One rule for everything below: what the scroll drives is computed from the scroll position only (no CSS
+     transition, no class toggle, no timer), so the same offset gives the same frame both ways and a fast scroll only
+     plays the same frames faster. */
+  const clamp01 = (v) => Math.min(1, Math.max(0, v));
+  const sm = (t) => t * t * (3 - 2 * t);                      // smoothstep: the one curve of the system
+
+  /* ---------- readiness: fetched by distance, decoded before they can be seen ----------
+     A section (never the image: an image inside a clipped frame does not intersect) within 1.5 screens turns its
+     images eager and decodes them. Nothing that can come on screen is display:none, so nothing waits for layout. */
+  const warm = (el) => {
+    for (const img of el.querySelectorAll("img")) {
+      if (img.closest("[hidden]")) continue;                     // other rubrics: warmed on tab intent
+      if (img.loading === "lazy") img.loading = "eager";
+      if (!img.dataset.ready && img.decode) img.decode().then(() => { img.dataset.ready = "1"; }, () => {});
+    }
+    el.querySelectorAll("[data-board]").forEach((b) => b.classList.add("is-near"));   // the 56 marks, as masks
+  };
+  const warmEls = $$("[data-warm]");
+  if (io) {
+    const wo = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { warm(e.target); wo.unobserve(e.target); } }), { rootMargin: "150% 0px 150% 0px" });
+    const startWarm = () => warmEls.forEach((el) => wo.observe(el));
+    // after the page's own first files: the first scene is right under the hero and is warmed on load
+    if (document.readyState === "complete") startWarm(); else addEventListener("load", startWarm, { once: true });
+  } else warmEls.forEach(warm);
+  // the tabs: decode a rubric's spreads on hover/focus, before the click shows them
+  $$(".reals__tabs button").forEach((b) => {
+    const w = () => $$(`.sp[data-p="${b.dataset.f}"]`).forEach((row) => { const h = row.hidden; row.hidden = false; warm(row); row.hidden = h; });
+    b.addEventListener("pointerenter", w, { passive: true }); b.addEventListener("focus", w);
+  });
+
+  /* ---------- hand-off out of the hero: the hallmark dissolves in place with the hide's top ---------- */
+  const heroWrap = $("[data-hero-wrap]");
+  if (G && heroWrap) G.fromTo(".hero", { "--top": 0 }, { "--top": 1, ease: "none", scrollTrigger: { trigger: heroWrap, start: "bottom 132%", end: "bottom 100%", scrub: true } });
+
+  /* ---------- techniques: plates slide over each other on the right, the index lights on the left ---------- */
+  const tq = $("[data-tq]");
+  const stage = tq && $("[data-tq-stage]", tq);
+  const items = tq ? $$(".tq__item", tq) : [];
+  const N = items.length;
+  const HEAD = 0.35, SEG = 0.42, LAST = 0.25, TAIL = 1.0;        // in screens: heading, each technique, last hold, bridge
+  const TOTAL = HEAD + (N - 1) * SEG + LAST + TAIL;
+  if (G && stage && N) {
+    const ST = window.ScrollTrigger;
+    const head = $("[data-tq-head]", tq);
+    const figs = items.map((li) => $(".tq__f", li)), imgs = figs.map((f) => $("img", f));
+    const names = items.map((li) => $(".tq__n", li)), descs = items.map((li) => $(".tq__d", li));
+    const more = $(".tq__more", tq);
+    const last = new Map();
+    const put = (el, prop, v) => { const k = last.get(el) || {}; if (k[prop] !== v) { k[prop] = v; last.set(el, k); prop.startsWith("--") ? el.style.setProperty(prop, v) : (el.style[prop] = v); } };
+    let fh = innerHeight, tqPin = null;
+    const render = (prog) => {
+      const s = prog * TOTAL;
+      const h = sm(clamp01(s / HEAD));
+      const s2 = Math.max(0, s - HEAD), k = Math.floor(s2 / SEG), u = s2 / SEG - k;
+      const P = Math.min(N - 1, k + sm(clamp01((u - 0.45) / 0.55)));     // holds 45 % of each step, then moves
+      const ho = sm(clamp01(2 * h)), li = sm(clamp01(2 * h - 1));     // the heading leaves, then the index arrives
+      put(head, "--o", (1 - ho).toFixed(3));                              // a variable, not an inline opacity left at 0
+      put(head, "transform", `translate3d(0,${(-90 * ho).toFixed(1)}px,0)`);
+      put(stage, "--h", li.toFixed(3));
+      for (let i = 0; i < N; i++) {
+        const y = clamp01(i - P);                                          // 1 = waiting below, 0 = in place
+        put(figs[i], "transform", `translate3d(0,${(y * 100).toFixed(3)}%,0)`);
+        const v = clamp01((P - i + 1) / 2);                                // 0 entering, .5 settled, 1 covered
+        put(imgs[i], "transform", `translate3d(0,${((0.5 - v) * 0.1 * fh).toFixed(1)}px,0)`);
+        put(names[i], "--l", Math.max(0, 1 - Math.abs(P - i)).toFixed(3));
+        const o = Math.max(0, 1 - 2 * Math.abs(i - P));
+        put(descs[i], "--o", (o * li).toFixed(3));
+        put(descs[i], "transform", `translate3d(0,${((i - P) * 36).toFixed(1)}px,0)`);
+        put(descs[i], "visibility", o > 0 ? "visible" : "hidden");
+      }
+      put(more, "--o", li.toFixed(3));
+    };
+    G.matchMedia().add("(min-width: 901px)", () => {
+      tq.classList.add("is-pinned");
+      tqPin = ST.create({ trigger: stage, start: "top top", end: () => "+=" + innerHeight * (TOTAL - 1), pin: true, pinSpacing: true,
+        invalidateOnRefresh: true, onRefresh: (st) => { fh = stage.offsetHeight; render(st.progress); }, onUpdate: (st) => render(st.progress),
+        onToggle: (st) => { window.__tqOn = st.isActive; tb && tb.classList.toggle("is-hidden", st.isActive); } });
+      render(0);
+      // the index is a control: a name scrolls to its technique
+      const go = (i) => { const y = tqPin.start + (HEAD + i * SEG) / TOTAL * (tqPin.end - tqPin.start) + 2; lenis ? lenis.scrollTo(y, { duration: 1.1 }) : scrollTo({ top: y, behavior: "smooth" }); };
+      const onClick = (e) => { const b = e.target.closest("[data-tq-go]"); if (b) go(+b.dataset.tqGo); };
+      tq.addEventListener("click", onClick);
+      return () => { tq.classList.remove("is-pinned"); window.__tqOn = false; tq.removeEventListener("click", onClick); [head, stage, more, ...figs, ...imgs, ...names, ...descs].forEach((el) => el.removeAttribute("style")); last.clear(); };
+    });
+  }
+
+  /* ---------- the rubric's ink sheet holds once its last line is on screen, so the paper rises over a still sheet ---------- */
+  const sheet = $("[data-sheet]");
+  if (sheet) {
+    const setSt = () => sheet.style.setProperty("--st", Math.min(0, innerHeight - sheet.offsetHeight) + "px");
+    setSt();
+    if ("ResizeObserver" in window) new ResizeObserver(setSt).observe(sheet);
+    addEventListener("resize", setSt, { passive: true });
+  }
+
+  /* ---------- drift, offsets, grounds, the bar: one scroll loop, all from the scroll position ---------- */
+  const paper = $("[data-paper]");
+  const maisons = $("[data-maisons]");
+  const wall = $("[data-wall]");
+  const bk = $("[data-bk]"), bkPages = $$("[data-bk-p]");
+  const hex = (v) => { const m = v.trim().match(/^#?([0-9a-f]{6})$/i); const n = parseInt(m ? m[1] : "EAE7DC", 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+  const css = getComputedStyle(root);
+  const PAPER = hex(css.getPropertyValue("--paper")), GOLD = hex(css.getPropertyValue("--gold-field"));
+  // [frame, the picture that moves inside it, amplitude as a share of the frame's height (= the picture's slack)]
+  const driftEls = [
+    ...$$(".bridge").map((b) => [b, $("img", b), 0.16]),
+    ...$$(".rl__a").map((a) => [a, $("img", a), 0.08]),
+    ...$$(".next3").map((n) => [n, $(".next3__media", n), 0.1]),
+    ...(innerWidth <= 900 ? $$(".tq__f").map((f) => [f, $("img", f), 0.1]) : []),
+  ].filter((x) => x[1]);
+  const held = $$("[data-drift-hold]");                 // inside a held (sticky) frame: driven by the page's own scroll
+  const pairs = $$(".sp--p .rl:nth-child(2), .sp--l figcaption, .sp--r figcaption");
+  const toneEls = $$("[data-tone-l]");
+  let lastBg = "", inkL = null, inkR = null;
+  const toneAt = (x, key) => {
+    let t = "dark";
+    for (const el of toneEls) { const r = el.getBoundingClientRect(); if (r.top <= 38 && r.bottom > 38 && r.left <= x && r.right > x && !el.closest("[hidden]")) t = el.dataset[key]; }
+    return t;
+  };
+  const loop = () => {
+    const vh = innerHeight;
+    // the bar takes ink over a light ground or photograph, per side (read before any write in this frame)
+    if (tb && !root.style.overflow) {
+      const l = toneAt(60, "toneL") === "light", r = toneAt(innerWidth - 100, "toneR") === "light";
+      if (l !== inkL) tb.classList.toggle("tb--ink-l", (inkL = l));
+      if (r !== inkR) tb.classList.toggle("tb--ink-r", (inkR = r));
+    }
+    if (!reduce) {
+      const boxes = driftEls.map(([box]) => box.getBoundingClientRect());
+      const prs = pairs.map((el) => el.closest(".sp").getBoundingClientRect());
+      const wr = wall && wall.getBoundingClientRect(), br = bk && bk.getBoundingClientRect();
+      driftEls.forEach(([, img, amp], i) => {
+        const r = boxes[i];
+        if (r.bottom < -vh || r.top > 2 * vh || !r.height) return;
+        const k = clamp01((vh - r.top) / (vh + r.height));                 // 0 entering at the bottom, 1 leaving at the top
+        img.style.transform = `translate3d(0,${((0.5 - k) * amp * r.height).toFixed(1)}px,0)`;
+      });
+      pairs.forEach((el, i) => {
+        const r = prs[i];
+        if (r.bottom < -vh || r.top > 2 * vh) return;
+        const k = clamp01((vh - r.top) / (vh + r.height));
+        el.style.transform = `translate3d(0,${((0.5 - k) * 90).toFixed(1)}px,0)`;   // the second layer passes at its own rate
+      });
+      if (wr) { const k = clamp01((vh - wr.top) / (vh + wr.height)); wall.style.transform = `translate3d(0,${((0.5 - k) * 70).toFixed(1)}px,0)`; }
+      if (br && bkPages.length) {
+        const k = sm(clamp01((vh * 0.95 - br.top) / (vh * 0.75)));            // dealt while the section rises, still from 20 % up
+        const w = bkPages[0].offsetWidth + 16;
+        bkPages.forEach((p, i) => { p.style.transform = `translate3d(${(-(1 - k) * i * w).toFixed(1)}px,${((1 - k) * (18 + i * 6)).toFixed(1)}px,0) rotate(${((1 - k) * (i % 2 ? 3.2 : -2.4) * (i ? 1 : 0)).toFixed(2)}deg)`; });
+      }
+      const span = Math.max(1, document.documentElement.scrollHeight - vh);
+      held.forEach((el) => {
+        const k = el.classList.contains("rh__ph") ? clamp01(scrollY / vh) : clamp01(scrollY / span) - 0.5;   // opening: sinks as the sheet rises
+        el.style.transform = `translate3d(0,${(k * 0.05 * el.parentElement.offsetHeight).toFixed(1)}px,0)`;
+      });
+    }
+    // the paper lights to gold under the maisons and back (paper and gold share a hue: no blue on the way)
+    if (paper && maisons) {
+      const r = maisons.getBoundingClientRect();
+      const c = (r.top + r.height / 2 - vh / 2) / vh;
+      const k = sm(clamp01(1.35 - Math.abs(c) * 1.5));
+      const bg = `rgb(${PAPER.map((v, j) => Math.round(v + (GOLD[j] - v) * k)).join(",")})`;
+      if (bg !== lastBg) { paper.style.backgroundColor = lastBg = bg; }
+    }
+  };
+  addEventListener("scroll", loop, { passive: true });
+  addEventListener("resize", loop, { passive: true });
+  if (G) window.ScrollTrigger.addEventListener("refresh", loop);
+  loop();
 })();
