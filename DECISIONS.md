@@ -254,7 +254,10 @@ solutions, decisions); the judge's report is `3-decisions.md`, the gates are in 
   caption pass at their own rate; the frames themselves never slit, fade or scale.
 - **Maisons:** the paper eases to the gold field and back; the marks are pressed in ink and hold still, the wall drifts.
 - **Book:** the four pages are dealt from the stack while the section rises, upright and still from 20 % up.
-- **Team:** back on the ink after the « 44 » bridge (gold Bodoni group names, cream names); no motion beyond the type.
+- **Team:** back on the ink after the « 44 » bridge (gold Bodoni group names, cream names); no motion beyond the type;
+  it hands straight to the footer's « Nous contacter » (the empty screen between them is gone).
+- **Contact:** the photograph shows once decoded; on phones the name and first name stay side by side, so the form
+  reads as one block rather than a column of lines.
 - **Rubric pages:** the opening photograph at full light (wide crop for screens, tall crop for phones), then an ink sheet
   with the title and intro rises over it, then the catalogue's paper rises over the held sheet; the next-rubric panel
   and footer are ink. The bar takes the ink on light grounds (measured under the logo and the links).
