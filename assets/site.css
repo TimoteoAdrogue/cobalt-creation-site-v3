@@ -223,13 +223,14 @@ button { font: inherit; color: inherit; }
 .band .sw__in { will-change: transform, opacity; }
 .hero__foot { position: relative; display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; padding: 0 var(--gut) clamp(28px, 5vh, 48px); }
 .hero__copy h1 { font-size: clamp(20px, 1.8vw, 28px); line-height: 1.2; margin: 0; }
-.no-story .hero-wrap { height: auto; }
-.no-story .hero { position: relative; height: auto; min-height: 100vh; background: transparent; }   /* grows to hold the sentences */
+/* without the story (reduced motion, no GSAP, or no JavaScript at all) the hero is a plain first screen */
+:is(.no-story, html:not(.js)) .hero-wrap { height: auto; }
+:is(.no-story, html:not(.js)) .hero { position: relative; height: auto; min-height: 100vh; background: transparent; }   /* grows to hold the sentences */
 /* without the scroll story the hide's lower edge falls into the page's ground, so no seam shows under the hero */
-.no-story .hero__leather, .no-story .hero__gl { -webkit-mask-image: linear-gradient(#000 55%, transparent); mask-image: linear-gradient(#000 55%, transparent); }
-.no-story .bands { position: static; translate: none; display: block; padding: 0 var(--gut) clamp(48px, 8vh, 80px); }
-.no-story .band { opacity: 1; max-width: 32ch; margin: 0 auto 1.2em; font-size: clamp(22px, 2.4vw, 34px); }
-.no-story .hero { grid-template-rows: 1fr auto auto; }
+:is(.no-story, html:not(.js)) .hero__leather, :is(.no-story, html:not(.js)) .hero__gl { -webkit-mask-image: linear-gradient(#000 55%, transparent); mask-image: linear-gradient(#000 55%, transparent); }
+:is(.no-story, html:not(.js)) .bands { position: static; translate: none; display: block; padding: 0 var(--gut) clamp(48px, 8vh, 80px); }
+:is(.no-story, html:not(.js)) .band { opacity: 1; max-width: 32ch; margin: 0 auto 1.2em; font-size: clamp(22px, 2.4vw, 34px); }
+:is(.no-story, html:not(.js)) .hero { grid-template-rows: 1fr auto auto; }
 
 /* ---------- split words (mask reveal), as V2 ---------- */
 .sw { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: .1em; margin-bottom: -.1em; }
@@ -448,7 +449,7 @@ button { font: inherit; color: inherit; }
 
 /* ---------- viewer: paper, the picture opens from its tile and slides in the arrow's direction (script) ---------- */
 .vw { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: var(--paper); color: var(--on-paper); overflow: hidden; }
-.vw::backdrop { background: var(--paper); }
+.vw::backdrop { background: transparent; }   /* the dialog itself is the paper: fading it reveals the page, no pop */
 .vw[open] { display: grid; grid-template-columns: 1fr minmax(260px, 360px); }
 .vw__stage { position: relative; display: grid; place-items: center; padding: 72px 96px; min-height: 0; touch-action: pan-y; overflow: hidden; }
 .vw__stage img { max-width: 100%; height: calc(100dvh - 144px); width: auto; object-fit: contain; transform-origin: 0 0; }   /* fixed box: the tile and the large file show at one size */

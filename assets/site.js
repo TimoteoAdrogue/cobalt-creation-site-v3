@@ -332,18 +332,21 @@
       if (job !== busy || !vw.open) return;
       // the outgoing picture leaves toward the side it was pushed, the incoming one arrives from the other
       if (!reduce) {
+        // the outgoing picture is a copy of the one on screen, decoded before the swap (never an empty frame)
         const r = img.getBoundingClientRect(), sr = stage.getBoundingClientRect();
-        const ghost = img.cloneNode();
-        ghost.className = "vw__ghost";
+        const ghost = new Image();
+        ghost.className = "vw__ghost"; ghost.alt = ""; ghost.src = img.currentSrc || img.src;
         ghost.style.cssText = `left:${r.left - sr.left}px;top:${r.top - sr.top}px;width:${r.width}px;height:${r.height}px;transform:${img.style.transform || "none"}`;
+        await (ghost.decode ? ghost.decode() : Promise.resolve()).catch(() => {});
+        if (job !== busy || !vw.open) return;
         stage.appendChild(ghost);
-        const a = ghost.animate([{ transform: ghost.style.transform, opacity: 1 }, { transform: `translateX(${-dir * 8}%)`, opacity: 0 }], { duration: 420, easing: EASE, fill: "forwards" });
+        const a = ghost.animate([{ transform: ghost.style.transform, opacity: 1 }, { transform: `translateX(${-dir * 6}%)`, opacity: 0 }], { duration: 300, easing: "cubic-bezier(.5, 0, .75, 0)", fill: "forwards" });
         a.onfinish = () => ghost.remove();
       }
       img.style.transform = "";
       cur = n; fill(n);
-      anim(img, [{ transform: `translateX(${dir * 8}%)`, opacity: 0 }, { transform: "none", opacity: 1 }], 420, 60);
-      anim(meta, [{ opacity: 0 }, { opacity: 1 }], 360, 120);
+      anim(img, [{ transform: `translateX(${dir * 6}%)`, opacity: 0 }, { transform: "none", opacity: 1 }], 460, 140);
+      anim(meta, [{ opacity: 0 }, { opacity: 1 }], 360, 160);
     };
     const open = (a, fromHistory = false) => {
       items = visible();
