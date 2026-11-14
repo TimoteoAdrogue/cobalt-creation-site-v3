@@ -267,3 +267,13 @@ solutions, decisions); the judge's report is `3-decisions.md`, the gates are in 
 - **Viewer:** opens from its tile (FLIP, 560 ms); next/previous slide in the arrow's direction, the outgoing picture a
   decoded copy (no empty frame), the incoming one after its file is decoded; swipe follows the finger; closing fades
   the viewer to reveal the page underneath.
+- **Grounds, measured** (screen centre every 40 px of scroll, 1440 × 900): home ink 47 %, paper 34 %, full-bleed
+  photographs 11 %, gold 7 % (V2's home: paper 58 %). A rubric page is as light as V2's by area (création: paper 77 %);
+  it stays apart by its ink opening sheet, Bodoni/Geist and vertical spreads. Switch if needed: catalogue on ink with a
+  paper mount per white-ground photograph (not built).
+- **Gates** (`reviews/v3/round2/tests/`, results in `judge/`): at 1440/1280/1024/390 on the home, the four rubrics and
+  contact, a cold-cache wheel burst at ≥ 3,000 px/s shows 0 late, 0 blank and 0 flickering images; down/up shots at rest
+  match (max 1.71 of 255, the hero excepted: its live shimmer); 0 hazy edges; steady down/up on the home matches (mean
+  ≤ 1.93, p95 ≤ 4.12). Round 1's gates: `verify.mjs` 0 problems, `verify_static.py` 0 failures, fps median 16.7 ms with
+  no frame over 25 ms, `scrollWidth` 390 on the 7 pages, no dead screen, copy check 0 new texts, reduced motion and
+  no-JS 0 unreachable elements. Viewer and page changes: 0 empty frames.
